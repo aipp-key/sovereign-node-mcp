@@ -72,9 +72,11 @@ Yarınki oturumda atılacak adımlar sırasıyla şunlardır:
 * `https://sovroute.com/llms.txt` dosyasına yeni RBF Güvenlik Kalkanı ve Mempool Entropisi uçları eklenecek.
 * Landing page üzerindeki uç listesine bu iki yeni kabiliyet ve "Dual-Rail (Lightning + Base)" rozeti işlenecek.
 
-### Adım 4: TaskFuel / Alby Ekibine (Moritz Kaminski) Bildirim
-* TaskFuel kataloğuna güncelleme başvurusu yapılacak:
-  * *"SovRoute Core güncellendi: 152 uç nokta arasında ilk ve tek 0-Conf RBF Güvenlik Kalkanı, Mempool Entropisi ve Native Lightning (L402) desteği devreye alındı."*
+### Adım 4: TaskFuel / Alby Ekibine (Moritz Kaminski) Bildirim & İletişim Stratejisi
+* **Stratejik Giriş Tonu (Builder-First / Dogfooding):**
+  Satış odaklı veya kurumsal bir baskı yerine, tamamen samimi bir geliştirici deneyimi üzerinden yaklaşılacak:
+  > *"Selam Moritz! SovRoute tarafında işler harika gidiyor. Kendi AI ajanlarımı çalıştırırken bir şeyi fark ettim: Her mikro-sorguda Base ağında gaz ücreti ve blok beklemek yerine satoshi (Lightning) ile ödemek bana inanılmaz derecede pürüzsüz ve çok daha hesaplı geldi. Ben de doğrudan kendi iş akışım için SovRoute'a yerel bare-metal düğümümüz üzerinden hem Native L402 Lightning (Sats) rayını hem de ajanların 0-onaylı Bitcoin ödemelerinde çift harcama riskini önleyen 0-Conf RBF Kalkanı'nı ekledim. TaskFuel'deki mevcut Base USDC desteğini aynen korudum; ama sats harcamayı seven ajanlar için de bu seçeneği açmış oldum. TaskFuel kataloğundaki SovRoute listesini bu yeni yeteneklerle güncellemek isterim, ne dersin?"*
+* Bu yaklaşım yarınki oturumda son rötuşlarıyla tekrar değerlendirilecek.
 
 ### Adım 5: Geliştiriciler İçin Tek Tıkla MCP Dağıtımı
 * Claude Desktop ve Cursor kullanıcılarının SovRoute motorunu tek bir JSON satırıyla araç (tool) olarak ekleyebileceği `mcp_config.json` rehberi yayınlanacak.
