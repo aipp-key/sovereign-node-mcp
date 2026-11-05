@@ -1,90 +1,80 @@
-# 🚀 SOVEREIGN NODE ENGINE — DEVİR TESLİM VE PROJE RAPORU (HANDOFF)
+# 🚀 SOVEREIGN NODE ENGINE — DEVİR TESLİM VE STRATEJİK YOL HARİTASI (HANDOFF)
 
-**Tarih:** 5 Kasım 2026  
-**Yerel Dizin:** `C:\Users\faruk\Desktop\dev\sovereign-node-engine`  
+**Tarih:** 5 Kasım 2026 / 6 Kasım 2026 Planı  
+**Yerel Proje Dizini:** `C:\Users\faruk\Desktop\dev\sovereign-node-engine`  
 **Canlı Sunucu Dizini:** `/srv/sovereign-node-engine` (`100.95.119.88:3088` - Tailscale)  
 **Özel Git Deposu (Gitea):** `http://100.95.119.88:3030/aipp/sovereign-node-engine`  
 
 ---
 
-## 1. Projenin Amacı ve Stratejik Hedefleri
-Bu proje, AI Agent ekonomisi (TaskFuel, Alby, Claude, Cursor, otonom ticaret botları) için üçüncü parti RPC sağlayıcılarına (Infura, Alchemy, Mempool.space) bağımlı olmadan, **kendi adanmış sunucumuzdaki bare-metal Bitcoin Core (v31.1) ve Phoenixd Lightning düğümümüzün kriptografik gerçeğini** L402 ve x402 ödeme raylarıyla satışa sunan, ultra düşük gecikmeli kurumsal bir orakıl (oracle) ve mutabakat motorudur.
+## 1. Pazar Analizi & TaskFuel Rekabet İstihbaratı (152 Uç Nokta İncelemesi)
 
-* **Sıfır Güven (Zero-Trust):** Girdi ve çıktılar Zod şemaları ve tamsayı `Satoshi` tipleri ile doğrulanır; IEEE-754 kayan noktalı sayı hataları engellenmiştir.
-* **Üç Katmanlı Mimari (Clean 3-Tier):** Controller (HTTP/MCP) $\rightarrow$ Service (İş Mantığı) $\rightarrow$ Adapter/Gateway (RPC/Lightning/EVM).
-* **Doğrudan Cüzdan Entegrasyonu:** Hizmet çağrısı karşılığında tahsil edilen satoshiler doğrudan sunucudaki `phoenixd` cüzdanına yatar.
+TaskFuel kataloğundaki *"Crypto & Prediction Markets -> Read the Blockchain"* kategorisinde yer alan 152 uç nokta ve 6 sağlayıcı (Glassnode, OneSource, Otto AI, 2s, BlockRun, SovRoute) detaylı olarak analiz edilmiştir:
 
----
-
-## 2. Mevcut SovRoute (`sovroute.com`) ile Yeni Motorun Karşılaştırması
-
-| Kriter | Mevcut `sovroute.com` (Cloudflare Edge) | Yeni `sovereign-node-engine` (Bare-Metal Sunucu) |
-| :--- | :--- | :--- |
-| **Ödeme Rayı** | Yalnızca Base L2 (`x402` - 0.001 USDC) | **Çift Ray: Hem Bitcoin Lightning (L402 Sats) hem Base USDC (HTLC Cross-Rail)** |
-| **Düğüm Gücü** | Genel/harici veri yansıtıcı | **Sunucudaki yerel `bitcoind:31.1` ve `phoenixd:9740` (0.04 ms bellek önbelleği)** |
-| **0-Conf RBF Kalkanı** | ❌ Yok | **✅ Var (`/v1/truth/rbf-shield/:txid`) — BIP-125 çift harcama dolandırıcılık koruması** |
-| **Derin Mempool Analizi** | ❌ Basit ücret tahmini | **✅ Var (`/v1/truth/mempool`) — 63K+ tx, 33MB sanal boyut ve 22M+ sat madenci havuzu** |
-| **LLM / Agent Standardı** | Sadece cURL / HTTP | **✅ Model Context Protocol (MCP) — Claude Desktop, Cursor ve TaskFuel için tek tıkla tool** |
-| **Otonom İstemci** | Manuel ödeme | **✅ Var (`AutonomousL402Agent`) — İnsan müdahalesi olmadan saniyede ödeyip veriyi alan ajan** |
+### Piyasanın Durumu ve Rakiplerin Zayıf Noktaları:
+1. **Aşırı Ethereum/Base Yoğunlaşması:** OneSource ve Otto AI neredeyse tamamen EVM/Base odaklıdır (`eth_*`, ERC-20, ENS, gas oracle). Bitcoin tarafında yoklar.
+2. **Aşırı Yüksek Fiyatlandırma:** Glassnode makro metrikler için çağrı başına **5¢ ($0.05)** talep etmektedir.
+3. **Yüzeysel ve Pahalı Bitcoin Verisi (2s.io):**
+   * Listede Bitcoin'e dokunan tek sağlayıcı olan `2s.io`, çağrı başına **0.25¢ - 0.36¢** (SovRoute'un 0.1¢ fiyatının 3.5 katı) ücret almaktadır.
+   * Kendi açıklamalarında `"(free/keyless)"` ibaresi yer almakta olup, kendi bare-metal düğümleri yerine halka açık üçüncü parti API'leri sarmaladıkları görülmektedir.
+4. **Büyük Ödeme Rayı Açığı (Piyasanın Kör Noktası):**
+   * TaskFuel'deki sağlayıcıların tamamı (`x402.ottoai.services`, `x402.glassnode.com`, `onesource.io`, `2s.io`) **yalnızca Base USDC (x402)** kabul etmektedir.
+   * TaskFuel'in kurucusu **Moritz Kaminski (Alby ekibi)** olmasına rağmen, ekosistemde **Native Lightning Network (L402 Satoshis)** ile ödeme kabul eden neredeyse hiçbir sağlayıcı yoktur!
 
 ---
 
-## 3. Şu Ana Kadar Yapılanlar ve Doğrulanan Başarılar
+## 2. "Kopyacı Olmama" ve Stratejik Fark Yaratma İlkemiz
 
-1. **Bare-Metal Bitcoin Core 31.1 Entegrasyonu:**
-   * `estimatesmartfee` ile anlık sat/vB ücret projeksiyonları.
-   * `getmempoolentry` ve `getmempoolinfo` ile canlı mempool analizi.
-   * `getbestblockhash` ve `getblockheader` ile blok yüksekliği ve doğrulaması.
-   * **In-Memory Cache:** Node'u korumak için 0.04 milisaniyede dönen sıcak önbellek katmanı.
+Piyasadaki `2s.io` gibi aktörleri taklit etmemek ve SovRoute'u benzersiz kılmak için şu 3 temel savunma hattı kurulmuştur:
 
-2. **Kriptografik L402 Middleware & Phoenixd Ödeme Doğrulaması:**
-   * SHA-256 tabanlı macaroon ve fatura üreteci.
-   * **Canlı Mobil Cüzdan Testi:** Kullanıcı mobil Lightning cüzdanından 4 farklı 5 satoshilik faturayı QR kod okutarak ödedi; Phoenixd bakiyesi 15.546'dan 15.566 satoshiye yükseldi.
-   * Canlı Bitcoin Mainnet'te işlem gören `47ed5eebcd...` txid'si taranarak BIP-125 RBF ve 140 sat/vB oranının mempool.space ile %100 uyuştuğu kanıtlandı.
-
-3. **%100 Otonom Ajan Döngüsü (Zero Human in the Loop):**
-   * `scripts/run-fully-autonomous-agent.ts` çalıştırıldı.
-   * Ajan HTTP 402 meydan okumasını yakaladı, Phoenixd üzerinden faturayı programatik olarak saniyede ödedi, `preimage` ile kimliğini doğruladı ve veriyi 1.2 saniyede çekip ajan bağlamına teslim etti.
-
-4. **Model Context Protocol (MCP) Sunucusu:**
-   * `@modelcontextprotocol/sdk` kullanılarak 5 adet yerel LLM aracı (`get_bitcoin_smart_fees`, `check_rbf_fraud_shield`, `get_mempool_entropy`, `verify_block_header`, `pay_lightning_invoice`) tanımlandı.
-   * `npm run mcp` veya Claude/Cursor entegrasyonu hazırlandı.
-
-5. **Alby Hub & NWC (NIP-47) Payer Adaptörü:**
-   * `src/infrastructure/alby/nwc-payer.adapter.ts` eklendi.
-   * TaskFuel ve Alby Hub kullanıcılarının `nostr+walletconnect://` bağlantı adreslerini doğrudan bağlayabilmesi sağlandı.
-
-6. **Base L2 Cross-Rail HTLC Sözleşmesi:**
-   * `contracts/CrossRailHTLC.sol` yazıldı. EVM `0x02` SHA-256 precompile ile Lightning ödeme özetleri (payment hash) 1:1 hizalandı.
-   * `src/infrastructure/evm/base-htlc.adapter.ts` ile Viem tabanlı calldata üretim ve doğrulama motoru eklendi.
-
-7. **Tam Test Kapsamı & Canlı Dağıtım:**
-   * Toplam **13 otomatik testin 13'ü de başarıyla geçmektedir** (`npm test`).
-   * Sunucuda `/srv/sovereign-node-engine` altında `sovereign-node-engine.service` systemd servisi olarak aktif çalışıyor.
-   * Masaüstüne `C:\Users\faruk\Desktop\dev\sovereign-node-engine` olarak taşındı.
-   * Sunucumuzdaki özel **Gitea** Git platformuna ilk repo olarak yüklendi (`http://100.95.119.88:3030/aipp/sovereign-node-engine`).
+1. **🛡️ 0-Conf RBF Dolandırıcılık Kalkanı (`/v1/chain/btc/rbf-shield/:txid`):**
+   * 152 uç noktanın hiçbirinde **sıfır-onay (0-conf) güvenlik oraklı YOKTUR.**
+   * Bir AI ajanı veya ticaret botu sıfır onaylı bir Bitcoin ödemesi aldığında, bu işlemin **BIP-125 Replace-By-Fee** ile çift harcanıp harcanamayacağını anında tespit eden sektördeki **TEK ORAKIL** biziz.
+2. **⚡ Derin Mempool Entropisi & Tıkanıklık Motoru (`/v1/chain/btc/mempool`):**
+   * Sıradan bir işlem sayısı yerine; 63.000+ bekleyen işlem, 33 MB blok yığılması, 22M+ satoshi madenci ücret havuzu ve dinamik **"Ağ Sıkışıklık Derecesi (LOW / MEDIUM / CRITICAL)"** sunulmaktadır.
+3. **⚡ Çift Raylı Ödeme (Native L402 Lightning + Base USDC):**
+   * Yalnızca Base USDC'ye sıkışmış rakiplerin aksine, Alby Hub ve Lightning cüzdanı olan tüm AI ajanlarına **L402 satoshi ile ödeme yapabilme özgürlüğü** sunarak pazardaki en büyük boşluğu kapatıyoruz.
+4. **🏛️ Bare-Metal Düğüm Gücü:**
+   * Verilerimiz harici API'lerden değil; sunucumuzda çalışan gerçek **Bitcoin Core v31.1 ve Phoenixd** düğümlerinden 0.04 ms in-memory önbellek hızıyla çekilmektedir.
 
 ---
 
-## 4. Nerede Kaldık? (Mevcut Durum)
-* Proje şu an tamamen çalışan, test edilmiş, taşınmış ve Git'e yedeklenmiş kararlı (stable) bir duraklama noktasındadır.
-* Mevcut TaskFuel uçlarına (`sovroute.com/v1/chain/btc/...`) **hiçbir şekilde dokunulmamış**, sıfır kesinti ve sıfır risk ilkesi korunmuştur.
+## 3. Şu Ana Kadar Neler Tamamlandı?
+
+* [x] **Bare-Metal RPC & Önbellek:** Bitcoin Core 31.1 `estimatesmartfee`, `getmempoolentry`, `getmempoolinfo` ve `getblockheader` 0.04ms önbellek ile bağlandı.
+* [x] **Kriptografik L402 Katmanı:** SHA-256 macaroon ve preimage doğrulama middleware'i kuruldu.
+* [x] **Canlı Ağda Gerçek Cüzdan Doğrulaması:** Mobil Lightning cüzdanından 4 fatura (20 sats) ödendi; Phoenixd bakiyesi arttı ve `47ed5eebcd...` txid'sinin mempool.space verileriyle %100 örtüştüğü kanıtlandı.
+* [x] **%100 Otonom Ajan İstemcisi:** İnsan müdahalesi olmadan HTTP 402'yi yakalayıp 1.2 saniyede ödeyen ve veriyi alan ajan testi başarıyla çalıştırıldı.
+* [x] **MCP (Model Context Protocol) Sunucusu:** LLM'lerin (Claude, Cursor, Antigravity) doğrudan çağırabileceği 5 araçlık MCP paketi inşa edildi.
+* [x] **Alby NWC (NIP-47) Payer:** Dış ajanların kendi Alby Hub cüzdanlarını bağlayabilmesi için adaptör eklendi.
+* [x] **Base L2 Cross-Rail HTLC:** `CrossRailHTLC.sol` sözleşmesi ve Viem adaptörü yazıldı.
+* [x] **Tüm Testler Yeşil:** 13 otomatik testin 13'ü de hatasız geçti (`npm test`).
+* [x] **Canlı Dağıtım & Yedekleme:** Sunucuda `sovereign-node-engine.service` çalışıyor, yerel proje `Desktop\dev\sovereign-node-engine` dizininde ve sunucudaki **Gitea** Git platformuna push edildi.
+* [x] **Mevcut SovRoute Güvencesi:** Mevcut TaskFuel uçlarına (`sovroute.com/v1/chain/btc/...`) **sıfır müdahale** yapıldı, kesintisiz çalışmaya devam ediyor.
 
 ---
 
-## 5. Sıradaki Yapılacaklar Listesi (Next Steps)
+## 4. 📅 YARIN YAPILACAKLAR LİSTESİ (ACTIONABLE TO-DO)
 
-1. **SovRoute Ağ Geçidi Yönlendirmesi (Entegrasyon Fazı):**
-   * Kullanıcı onayı alındığında, `sovroute.com` API ağ geçidine 2 yeni uç eklenecek:
-     * `GET /v1/chain/btc/rbf-shield/:txid`
-     * `GET /v1/chain/btc/mempool`
-   * Bu rotalar sunucumuzdaki `sovereign-node-engine` servisine proxy edilecek.
+Yarınki oturumda atılacak adımlar sırasıyla şunlardır:
 
-2. **`llms.txt` ve Dokümantasyon Güncellemesi:**
-   * `https://sovroute.com/llms.txt` dosyasına yeni güvenlik kalkanı ve mempool entropisi uçları eklenecek.
+### Adım 1: Yeni Uç Noktaların SovRoute Ağ Geçidine Eklenmesi
+* Mevcut uçlara dokunmadan, API ağ geçidine 2 yeni uç rotası tanımlanacak:
+  * `GET /v1/chain/btc/rbf-shield/:txid` (0-Conf Fraud Shield)
+  * `GET /v1/chain/btc/mempool` (Mempool Entropy & Congestion)
+* Bu rotalar, arka plandaki `100.95.119.88:3088` motorumuza bağlanacak.
 
-3. **TaskFuel / Alby (Moritz Kaminski) Kataloğuna Sunum:**
-   * TaskFuel kataloğuna: *"SovRoute Core: 0-Conf RBF Güvenlik Kalkanı ve Derin Mempool Entropisi eklendi + Native Lightning L402 desteği devrede"* güncellemesi sunulacak.
+### Adım 2: Çift Rayın (L402 Lightning + x402 Base) Canlıya Alınması
+* Dönen HTTP 402 cevabında hem Base USDC (`x402`) hem de Phoenixd üzerinden anlık üretilen Lightning faturası (`L402`) birlikte sunulacak.
+* Böylece hem EVM ajanları hem Lightning ajanları aynı ucu çağırabilecek.
 
-4. **Claude / Cursor İçin Hazır MCP Yapılandırması:**
-   * Geliştiricilerin masaüstü yapay zekalarında kullanabilmesi için örnek bir `mcp_config.json` şablonu dokümante edilecek.
+### Adım 3: `sovroute.com` Vitrini ve `llms.txt` Güncellemesi
+* `https://sovroute.com/llms.txt` dosyasına yeni RBF Güvenlik Kalkanı ve Mempool Entropisi uçları eklenecek.
+* Landing page üzerindeki uç listesine bu iki yeni kabiliyet ve "Dual-Rail (Lightning + Base)" rozeti işlenecek.
+
+### Adım 4: TaskFuel / Alby Ekibine (Moritz Kaminski) Bildirim
+* TaskFuel kataloğuna güncelleme başvurusu yapılacak:
+  * *"SovRoute Core güncellendi: 152 uç nokta arasında ilk ve tek 0-Conf RBF Güvenlik Kalkanı, Mempool Entropisi ve Native Lightning (L402) desteği devreye alındı."*
+
+### Adım 5: Geliştiriciler İçin Tek Tıkla MCP Dağıtımı
+* Claude Desktop ve Cursor kullanıcılarının SovRoute motorunu tek bir JSON satırıyla araç (tool) olarak ekleyebileceği `mcp_config.json` rehberi yayınlanacak.
