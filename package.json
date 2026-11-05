@@ -1,0 +1,45 @@
+{
+  "name": "sovereign-node-engine",
+  "version": "1.0.0",
+  "description": "Zero-trust Sovereign Node Intelligence & Cross-Rail L402 Settlement Engine for AI Agents",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "mcp": "tsx src/interfaces/mcp/index.ts",
+    "test": "tsx --test tests/**/*.test.ts"
+  },
+  "bin": {
+    "sovereign-mcp": "dist/interfaces/mcp/index.js"
+  },
+  "keywords": [
+    "l402",
+    "bitcoin",
+    "lightning",
+    "alby",
+    "taskfuel",
+    "zero-trust",
+    "mempool",
+    "ai-agents",
+    "htlc"
+  ],
+  "author": "Antigravity Sovereign Team",
+  "license": "MIT",
+  "dependencies": {
+    "@getalby/sdk": "^9.0.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@types/qrcode": "^1.5.6",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4",
+    "viem": "^2.23.4",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.4",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}
