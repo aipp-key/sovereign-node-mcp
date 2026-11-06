@@ -80,3 +80,19 @@ Yarınki oturumda atılacak adımlar sırasıyla şunlardır:
 
 ### Adım 5: Geliştiriciler İçin Tek Tıkla MCP Dağıtımı
 * Claude Desktop ve Cursor kullanıcılarının SovRoute motorunu tek bir JSON satırıyla araç (tool) olarak ekleyebileceği `mcp_config.json` rehberi yayınlanacak.
+
+---
+
+## 5. 🔮 BÜYÜK PROTOKOL VİZYONU: "SUB-LIG" (Universal Base-to-Lightning Bridge)
+
+* **Proje Kod Adı:** `SUB-LIG`
+* **Anlamı:** Submarine / Sub-second / Base Substrate & Lightning Ligature (İki Rayı Kenetleyen Bağ).
+* **Problem:** TaskFuel ve Web3 dünyasındaki 152+ yapay zekâ ucunun tamamı Base L2 (USDC) üzerindedir; Lightning ajanları bu servislere erişememektedir.
+* **Çözüm:** `SUB-LIG` Ters Çevirici / Likidite Köprüsü (Cross-Rail Reverse Proxy):
+  1. Lightning ajanı istek atar (`proxy.sovroute.com/sub-lig/...`).
+  2. Proxy hedef Base ucundan `402 x402 ($0.001 USDC)` yanıtı alır.
+  3. Bunu satoshiye çevirir (1 satoshi maliyet + 1 satoshi SovRoute komisyonu = 2 sats) ve ajana L402 faturası keser.
+  4. Ajan faturayı öder; Proxy kendi Base sıcak kasasından USDC'yi hedefe öder ve gelen veriyi ajana teslim eder.
+* **Kazanç:** Sıfır veri üretimiyle tüm pazardaki 152 ucu anında "Satoshi ile Çalışan" servise dönüştürür ve her işlemden %50-%100 arbitraj komisyonu toplar.
+* **Mevcut Altyapı Hazırlığı:** `CrossRailHTLC.sol` ve `cross-rail-settlement.service.ts` modülleri bu vizyonun çekirdeği olarak hazırlandı. Faz 2'de canlıya alınacak.
+
