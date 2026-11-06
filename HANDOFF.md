@@ -58,11 +58,13 @@ Piyasadaki `2s.io` gibi aktörleri taklit etmemek ve SovRoute'u benzersiz kılma
 
 Yarınki oturumda atılacak adımlar sırasıyla şunlardır:
 
-### Adım 1: Yeni Uç Noktaların SovRoute Ağ Geçidine Eklenmesi
-* Mevcut uçlara dokunmadan, API ağ geçidine 2 yeni uç rotası tanımlanacak:
-  * `GET /v1/chain/btc/rbf-shield/:txid` (0-Conf Fraud Shield)
-  * `GET /v1/chain/btc/mempool` (Mempool Entropy & Congestion)
-* Bu rotalar, arka plandaki `100.95.119.88:3088` motorumuza bağlanacak.
+### Adım 1: Yeni Uç Noktaların SovRoute Ağ Geçidine Eklenmesi (HAZIR - PASİFE ALINDI)
+* **Alt Alan Adı:** `node.sovroute.com` başarıyla bağlandı, Let's Encrypt SSL sertifikası alındı.
+* **Tasarım:** `sovroute.com` ile %100 aynı görsel DNA (3D logo, cetvel ızgarası, koyu lacivert terminal) giydirildi.
+* **Gece Güvenliği (Pasif Mod):** Kullanıcı talebiyle gece açık kalmaması için Traefik router'ı pasife alındı (`/etc/dokploy/traefik/dynamic/node-sovroute.yml.disabled`).
+* **Yarın Açma Komutu (Tek Tık):**
+  `ssh root@100.95.119.88 "mv /etc/dokploy/traefik/dynamic/node-sovroute.yml.disabled /etc/dokploy/traefik/dynamic/node-sovroute.yml"`
+
 
 ### Adım 2: Çift Rayın (L402 Lightning + x402 Base) Canlıya Alınması
 * Dönen HTTP 402 cevabında hem Base USDC (`x402`) hem de Phoenixd üzerinden anlık üretilen Lightning faturası (`L402`) birlikte sunulacak.
