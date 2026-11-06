@@ -20,10 +20,10 @@ export function createNodeTruthRouter(
     });
   });
 
-  // Protected: Mempool Entropy Signal (5 sats)
+  // Protected: Mempool Entropy Signal (2 sats)
   router.get(
     '/v1/truth/mempool',
-    createL402Middleware(l402Service, { priceSats: 5, resourceName: 'mempool-entropy' }),
+    createL402Middleware(l402Service, { priceSats: 2, resourceName: 'mempool-entropy' }),
     async (_req: Request, res: Response) => {
       try {
         const mempoolData = await nodeTruthService.getMempoolEntropy();
@@ -38,10 +38,10 @@ export function createNodeTruthRouter(
     }
   );
 
-  // Protected: Smart Fee Projection (5 sats)
+  // Protected: Smart Fee Projection (1 sat)
   router.get(
     '/v1/truth/fees',
-    createL402Middleware(l402Service, { priceSats: 5, resourceName: 'smart-fees' }),
+    createL402Middleware(l402Service, { priceSats: 1, resourceName: 'smart-fees' }),
     async (_req: Request, res: Response) => {
       try {
         const feeData = await nodeTruthService.getSmartFeeEstimates();
@@ -82,10 +82,10 @@ export function createNodeTruthRouter(
     }
   );
 
-  // Protected: Block Header Truth (5 sats)
+  // Protected: Block Header Truth (1 sat)
   router.get(
     '/v1/truth/block',
-    createL402Middleware(l402Service, { priceSats: 5, resourceName: 'block-header-truth' }),
+    createL402Middleware(l402Service, { priceSats: 1, resourceName: 'block-header-truth' }),
     async (_req: Request, res: Response) => {
       try {
         const blockData = await nodeTruthService.getLatestBlockHeader();
@@ -100,10 +100,10 @@ export function createNodeTruthRouter(
     }
   );
 
-  // Protected: Lightning Topology Signal (10 sats)
+  // Protected: Lightning Topology Signal (5 sats)
   router.get(
     '/v1/truth/topology',
-    createL402Middleware(l402Service, { priceSats: 10, resourceName: 'lightning-topology' }),
+    createL402Middleware(l402Service, { priceSats: 5, resourceName: 'lightning-topology' }),
     async (_req: Request, res: Response) => {
       try {
         const topologyData = await nodeTruthService.getLightningTopology();
