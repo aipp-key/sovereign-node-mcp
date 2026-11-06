@@ -542,7 +542,7 @@ export function renderEngineDashboardHtml(): string {
             </div>
             <div class="footer-links">
                 <a href="https://sovroute.com" target="_blank">Main Gateway</a>
-                <a href="https://sovroute.com/swap" target="_blank">Cross-Rail Swap</a>
+                <a href="/health" target="_blank">Health Status</a>
                 <a href="https://sovroute.com/llms.txt" target="_blank">llms.txt</a>
                 <a href="https://github.com/sovroutecore/sovroute" target="_blank">GitHub</a>
             </div>
