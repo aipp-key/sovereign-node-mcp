@@ -2,12 +2,37 @@ import { Router, Request, Response } from 'express';
 import { NodeTruthService } from '../../../application/services/node-truth.service.js';
 import { L402Service } from '../../../application/services/l402.service.js';
 import { createL402Middleware } from '../middleware/l402.middleware.js';
+import { renderEngineDashboardHtml } from '../views/engine-dashboard.view.js';
 
 export function createNodeTruthRouter(
   nodeTruthService: NodeTruthService,
   l402Service: L402Service
 ): Router {
   const router = Router();
+
+  // Root Dashboard / Discovery
+  router.get('/', (req: Request, res: Response): void => {
+    if (req.accepts('html')) {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(renderEngineDashboardHtml());
+      return;
+    }
+    res.json({
+      service: 'Sovereign Node Engine',
+      version: '1.0.0',
+      network: 'bitcoin-mainnet',
+      protocol: 'L402-Enabled',
+      endpoints: [
+        { path: '/v1/truth/fees', method: 'GET', priceSats: 1, desc: 'Smart Fee Projections' },
+        { path: '/v1/truth/mempool', method: 'GET', priceSats: 2, desc: 'Mempool Entropy' },
+        { path: '/v1/truth/rbf-shield/:txid', method: 'GET', priceSats: 5, desc: '0-Conf Fraud Shield' },
+        { path: '/v1/truth/block', method: 'GET', priceSats: 1, desc: 'Block Header Truth' },
+        { path: '/health', method: 'GET', priceSats: 0, desc: 'Public Health Check' },
+      ],
+      documentation: 'https://sovroute.com/llms.txt',
+    });
+    return;
+  });
 
   // Public Health endpoint
   router.get('/health', (_req: Request, res: Response) => {
