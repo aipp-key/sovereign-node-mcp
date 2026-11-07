@@ -5,10 +5,12 @@ import {
   createOmniRailMiddleware,
   OMNI_RAIL_CORS_HEADERS,
   SOLANA_PAY_TO_ADDRESS,
+  SOLANA_RPC_URL,
   SOLANA_USDC_MINT,
   SUPPORTED_EVM_CHAINS,
 } from '../middleware/omni-rail.middleware.js';
 import { BASE_PAY_TO_ADDRESS } from '../middleware/l402.middleware.js';
+import { renderOmniTestHtml } from '../views/omni-test.view.js';
 
 function validateTxidParam(req: Request, res: Response, next: NextFunction): void {
   const rawTxid = req.params.txid;
@@ -36,6 +38,43 @@ export function createOmniRailRouter(
       return;
     }
     next();
+  });
+
+  // Interactive Browser Live Wallet Test Console
+  router.get('/omni-test', (_req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(renderOmniTestHtml());
+  });
+
+  // Helper: Fetch latest confirmed Solana Mainnet transaction signature for SOLANA_PAY_TO_ADDRESS
+  router.get('/v1/omni/solana-latest-tx', async (_req: Request, res: Response) => {
+    try {
+      const rpcRes = await fetch(SOLANA_RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'getSignaturesForAddress',
+          params: [SOLANA_PAY_TO_ADDRESS, { limit: 1 }],
+        }),
+      });
+      const rpcData: any = await rpcRes.json();
+      const first = rpcData?.result?.[0];
+      if (!first?.signature) {
+        res.status(404).json({ error: 'No confirmed transactions found for address', address: SOLANA_PAY_TO_ADDRESS });
+        return;
+      }
+      res.json({
+        address: SOLANA_PAY_TO_ADDRESS,
+        signature: first.signature,
+        slot: first.slot,
+        blockTime: first.blockTime,
+        confirmationStatus: first.confirmationStatus,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Solana RPC Query Failed', details: err.message });
+    }
   });
 
   // Public Discovery Endpoint for Quad-Rail (4-Rail) Experimental Gateway
@@ -92,7 +131,7 @@ export function createOmniRailRouter(
       priceSats: 2,
       priceUsdcAtomic: '2000',
       priceSolLamports: '10000',
-      priceEthWei: '600000000000',
+      priceEthWei: '300000000000',
       priceUsdDisplay: '$0.002',
       resourceName: 'omni-mempool-entropy',
       description: 'Quad-Rail (L402 + Base + Solana + Multi-EVM) Bitcoin Core v31.1 Mempool Entropy',
@@ -104,6 +143,7 @@ export function createOmniRailRouter(
           source: 'sovereign-bitcoind:31.1 (Mainnet)',
           gateway: 'Quad-Rail (/v1/omni)',
           paymentRail: (req as any).paymentRail,
+          onChainReceipt: (req as any).onChainReceipt || undefined,
           data: mempoolData,
         });
       } catch (err: any) {
