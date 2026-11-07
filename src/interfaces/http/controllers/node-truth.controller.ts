@@ -6,6 +6,11 @@ import {
   DUAL_RAIL_CORS_HEADERS,
 } from '../middleware/l402.middleware.js';
 import { renderEngineDashboardHtml } from '../views/engine-dashboard.view.js';
+import {
+  renderLlmsTxt,
+  renderOpenApiSpec,
+  renderMcpConfigJson,
+} from '../views/discovery-specs.view.js';
 
 function validateTxidParam(req: Request, res: Response, next: NextFunction): void {
   const rawTxid = req.params.txid;
@@ -89,9 +94,25 @@ export function createNodeTruthRouter(
           desc: 'Public Health Check',
         },
       ],
-      documentation: 'https://sovroute.com/llms.txt',
+      documentation: 'https://node.sovroute.com/llms.txt',
+      openApiSpec: 'https://node.sovroute.com/openapi.json',
+      mcpConfig: 'https://node.sovroute.com/mcp-config.json',
     });
     return;
+  });
+
+  // Public Machine-Readable Discovery Endpoints (Free / 0 sats)
+  router.get('/llms.txt', (_req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.send(renderLlmsTxt());
+  });
+
+  router.get('/openapi.json', (_req: Request, res: Response) => {
+    res.json(renderOpenApiSpec());
+  });
+
+  router.get('/mcp-config.json', (_req: Request, res: Response) => {
+    res.json(renderMcpConfigJson());
   });
 
   // Public Health endpoint
