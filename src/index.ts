@@ -6,6 +6,7 @@ import { PhoenixdGatewayAdapter } from './infrastructure/lightning/phoenixd-gate
 import { NodeTruthService } from './application/services/node-truth.service.js';
 import { L402Service } from './application/services/l402.service.js';
 import { createNodeTruthRouter } from './interfaces/http/controllers/node-truth.controller.js';
+import { createOmniRailRouter } from './interfaces/http/controllers/omni-rail.controller.js';
 
 dotenv.config();
 
@@ -43,9 +44,11 @@ async function bootstrap() {
   const nodeTruthService = new NodeTruthService(bitcoinAdapter);
   const l402Service = new L402Service(lightningGateway);
 
-  // 3. Transport Layer Router
+  // 3. Transport Layer Routers
   const router = createNodeTruthRouter(nodeTruthService, l402Service);
+  const omniRouter = createOmniRailRouter(nodeTruthService, l402Service);
   app.use(router);
+  app.use(omniRouter);
 
   app.listen(PORT, HOST, () => {
     console.log(`[Sovereign Node Engine] Live on http://${HOST}:${PORT}`);
