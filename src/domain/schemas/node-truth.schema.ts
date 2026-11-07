@@ -33,9 +33,11 @@ export const SmartFeeProjectionSchema = z.object({
 export const RbfShieldAssessmentSchema = z.object({
   txid: Hex64Schema,
   isInMempool: z.boolean(),
+  confirmations: z.number().int().nonnegative().optional(),
   bip125Replaceable: z.boolean(),
   vsize: z.number().int().nonnegative(),
   feeRateSatPerVb: z.number().nonnegative(),
+  ancestorCount: z.number().int().nonnegative().optional(),
   hasConflicts: z.boolean(),
   zeroConfRiskLevel: z.enum(['SAFE', 'MEDIUM_RISK', 'HIGH_RISK_RBF_ENABLED', 'NOT_FOUND']),
   recommendation: z.string(),

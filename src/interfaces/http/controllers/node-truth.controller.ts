@@ -1,14 +1,40 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { NodeTruthService } from '../../../application/services/node-truth.service.js';
 import { L402Service } from '../../../application/services/l402.service.js';
-import { createL402Middleware } from '../middleware/l402.middleware.js';
+import {
+  createL402Middleware,
+  DUAL_RAIL_CORS_HEADERS,
+} from '../middleware/l402.middleware.js';
 import { renderEngineDashboardHtml } from '../views/engine-dashboard.view.js';
+
+function validateTxidParam(req: Request, res: Response, next: NextFunction): void {
+  const rawTxid = req.params.txid;
+  const txid = Array.isArray(rawTxid) ? rawTxid[0] : rawTxid;
+
+  if (!txid || !/^[0-9a-fA-F]{64}$/.test(txid)) {
+    res.status(400).json({ error: 'Invalid 64-character hex transaction ID' });
+    return;
+  }
+  next();
+}
 
 export function createNodeTruthRouter(
   nodeTruthService: NodeTruthService,
   l402Service: L402Service
 ): Router {
   const router = Router();
+
+  // Global CORS & OPTIONS preflight for Dual-Rail (L402 + x402) clients
+  router.use((req: Request, res: Response, next: NextFunction) => {
+    for (const [k, v] of Object.entries(DUAL_RAIL_CORS_HEADERS)) {
+      res.setHeader(k, v);
+    }
+    if (req.method === 'OPTIONS') {
+      res.status(204).end();
+      return;
+    }
+    next();
+  });
 
   // Root Dashboard / Discovery
   router.get('/', (req: Request, res: Response): void => {
@@ -21,13 +47,47 @@ export function createNodeTruthRouter(
       service: 'Sovereign Node Engine',
       version: '1.0.0',
       network: 'bitcoin-mainnet',
-      protocol: 'L402-Enabled',
+      protocol: 'Dual-Rail (L402 Lightning + x402 Base USDC)',
       endpoints: [
-        { path: '/v1/truth/fees', method: 'GET', priceSats: 1, desc: 'Smart Fee Projections' },
-        { path: '/v1/truth/mempool', method: 'GET', priceSats: 2, desc: 'Mempool Entropy' },
-        { path: '/v1/truth/rbf-shield/:txid', method: 'GET', priceSats: 5, desc: '0-Conf Fraud Shield' },
-        { path: '/v1/truth/block', method: 'GET', priceSats: 1, desc: 'Block Header Truth' },
-        { path: '/health', method: 'GET', priceSats: 0, desc: 'Public Health Check' },
+        {
+          path: '/v1/chain/btc/fees',
+          alias: '/v1/truth/fees',
+          method: 'GET',
+          priceSats: 1,
+          priceUsd: '$0.001',
+          desc: 'Smart Fee Projections (Bitcoin Core v31.1)',
+        },
+        {
+          path: '/v1/chain/btc/mempool',
+          alias: '/v1/truth/mempool',
+          method: 'GET',
+          priceSats: 2,
+          priceUsd: '$0.002',
+          desc: 'Deep Mempool Entropy & Congestion Oracle',
+        },
+        {
+          path: '/v1/chain/btc/rbf-shield/:txid',
+          alias: '/v1/truth/rbf-shield/:txid',
+          method: 'GET',
+          priceSats: 5,
+          priceUsd: '$0.005',
+          desc: '0-Conf BIP-125 RBF Double-Spend Fraud Shield',
+        },
+        {
+          path: '/v1/chain/btc/block',
+          alias: '/v1/truth/block',
+          method: 'GET',
+          priceSats: 1,
+          priceUsd: '$0.001',
+          desc: 'Block Header Truth',
+        },
+        {
+          path: '/health',
+          method: 'GET',
+          priceSats: 0,
+          priceUsd: '$0.00',
+          desc: 'Public Health Check',
+        },
       ],
       documentation: 'https://sovroute.com/llms.txt',
     });
@@ -39,22 +99,30 @@ export function createNodeTruthRouter(
     res.json({
       status: 'UP',
       service: 'Sovereign Node Intelligence Engine',
-      protocol: 'L402-Enabled',
+      protocol: 'Dual-Rail (L402 + x402)',
       nodeSynced: true,
       timestamp: Math.floor(Date.now() / 1000),
     });
   });
 
-  // Protected: Mempool Entropy Signal (2 sats)
+  // Protected: Mempool Entropy Signal (2 sats / $0.002 USDC)
   router.get(
-    '/v1/truth/mempool',
-    createL402Middleware(l402Service, { priceSats: 2, resourceName: 'mempool-entropy' }),
-    async (_req: Request, res: Response) => {
+    ['/v1/chain/btc/mempool', '/v1/truth/mempool'],
+    createL402Middleware(l402Service, {
+      priceSats: 2,
+      priceUsdcAtomic: '2000',
+      priceUsdDisplay: '$0.002',
+      resourceName: 'mempool-entropy',
+      description:
+        'Deep Bitcoin mempool entropy: unconfirmed tx count, vMB block backlog, fee pool in sats, and dynamic congestion rating from bare-metal Bitcoin Core v31.1.',
+    }),
+    async (req: Request, res: Response) => {
       try {
         const mempoolData = await nodeTruthService.getMempoolEntropy();
         res.json({
           source: 'sovereign-bitcoind:31.1 (Mainnet)',
-          verification: 'Preimage-Settled Cryptographic Access',
+          paymentRail: (req as any).paymentRail || 'L402-LIGHTNING',
+          verification: 'Cryptographic Dual-Rail Access',
           data: mempoolData,
         });
       } catch (err: any) {
@@ -63,16 +131,24 @@ export function createNodeTruthRouter(
     }
   );
 
-  // Protected: Smart Fee Projection (1 sat)
+  // Protected: Smart Fee Projection (1 sat / $0.001 USDC)
   router.get(
-    '/v1/truth/fees',
-    createL402Middleware(l402Service, { priceSats: 1, resourceName: 'smart-fees' }),
-    async (_req: Request, res: Response) => {
+    ['/v1/chain/btc/fees', '/v1/truth/fees'],
+    createL402Middleware(l402Service, {
+      priceSats: 1,
+      priceUsdcAtomic: '1000',
+      priceUsdDisplay: '$0.001',
+      resourceName: 'smart-fees',
+      description:
+        'Real-time Bitcoin Core v31.1 estimatesmartfee projections (sat/vB) for fastest (1-2 blocks) and economic (6 blocks) targets.',
+    }),
+    async (req: Request, res: Response) => {
       try {
         const feeData = await nodeTruthService.getSmartFeeEstimates();
         res.json({
           source: 'sovereign-bitcoind:31.1 (estimatesmartfee Mainnet Engine)',
-          verification: 'Preimage-Settled Cryptographic Access',
+          paymentRail: (req as any).paymentRail || 'L402-LIGHTNING',
+          verification: 'Cryptographic Dual-Rail Access',
           data: feeData,
         });
       } catch (err: any) {
@@ -81,24 +157,28 @@ export function createNodeTruthRouter(
     }
   );
 
-  // Protected: 0-Conf RBF Double-Spend Shield (5 sats)
+  // Protected: 0-Conf RBF Double-Spend Shield (5 sats / $0.005 USDC)
   router.get(
-    '/v1/truth/rbf-shield/:txid',
-    createL402Middleware(l402Service, { priceSats: 5, resourceName: 'rbf-shield' }),
+    ['/v1/chain/btc/rbf-shield/:txid', '/v1/truth/rbf-shield/:txid'],
+    validateTxidParam,
+    createL402Middleware(l402Service, {
+      priceSats: 5,
+      priceUsdcAtomic: '5000',
+      priceUsdDisplay: '$0.005',
+      resourceName: 'rbf-shield',
+      description:
+        '0-Conf Bitcoin RBF double-spend fraud oracle: inspects BIP-125 signaling, conflicting spends, ancestor package fee rate, and UTXO confirmation status.',
+    }),
     async (req: Request, res: Response) => {
       const rawTxid = req.params.txid;
       const txid = Array.isArray(rawTxid) ? rawTxid[0] : rawTxid;
-
-      if (!txid || !/^[0-9a-fA-F]{64}$/.test(txid)) {
-        res.status(400).json({ error: 'Invalid 64-character hex transaction ID' });
-        return;
-      }
 
       try {
         const shieldData = await nodeTruthService.checkRbfShield(txid);
         res.json({
           source: 'sovereign-bitcoind:31.1 (Full-RBF Mempool Inspector)',
-          verification: 'Preimage-Settled Cryptographic Access',
+          paymentRail: (req as any).paymentRail || 'L402-LIGHTNING',
+          verification: 'Cryptographic Dual-Rail Access',
           data: shieldData,
         });
       } catch (err: any) {
@@ -107,16 +187,24 @@ export function createNodeTruthRouter(
     }
   );
 
-  // Protected: Block Header Truth (1 sat)
+  // Protected: Block Header Truth (1 sat / $0.001 USDC)
   router.get(
-    '/v1/truth/block',
-    createL402Middleware(l402Service, { priceSats: 1, resourceName: 'block-header-truth' }),
-    async (_req: Request, res: Response) => {
+    ['/v1/chain/btc/block', '/v1/truth/block'],
+    createL402Middleware(l402Service, {
+      priceSats: 1,
+      priceUsdcAtomic: '1000',
+      priceUsdDisplay: '$0.001',
+      resourceName: 'block-header-truth',
+      description:
+        'Verified Bitcoin mainnet chain tip height, block hash, difficulty, and timestamp from bare-metal Bitcoin Core v31.1.',
+    }),
+    async (req: Request, res: Response) => {
       try {
         const blockData = await nodeTruthService.getLatestBlockHeader();
         res.json({
           source: 'sovereign-bitcoind:31.1 (Mainnet)',
-          verification: 'Preimage-Settled Cryptographic Access',
+          paymentRail: (req as any).paymentRail || 'L402-LIGHTNING',
+          verification: 'Cryptographic Dual-Rail Access',
           data: blockData,
         });
       } catch (err: any) {
@@ -125,16 +213,23 @@ export function createNodeTruthRouter(
     }
   );
 
-  // Protected: Lightning Topology Signal (5 sats)
+  // Protected: Lightning Topology Signal (5 sats / $0.005 USDC)
   router.get(
-    '/v1/truth/topology',
-    createL402Middleware(l402Service, { priceSats: 5, resourceName: 'lightning-topology' }),
-    async (_req: Request, res: Response) => {
+    ['/v1/chain/btc/topology', '/v1/truth/topology'],
+    createL402Middleware(l402Service, {
+      priceSats: 5,
+      priceUsdcAtomic: '5000',
+      priceUsdDisplay: '$0.005',
+      resourceName: 'lightning-topology',
+      description: 'Sovereign Lightning Network node routing & gossip topology intelligence.',
+    }),
+    async (req: Request, res: Response) => {
       try {
         const topologyData = await nodeTruthService.getLightningTopology();
         res.json({
           source: 'sovereign-lnd:0.21.3 (Mainnet)',
-          verification: 'Preimage-Settled Cryptographic Access',
+          paymentRail: (req as any).paymentRail || 'L402-LIGHTNING',
+          verification: 'Cryptographic Dual-Rail Access',
           data: topologyData,
         });
       } catch (err: any) {
