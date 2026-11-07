@@ -37,8 +37,16 @@ TaskFuel kataloğundaki *"Crypto & Prediction Markets -> Read the Blockchain"* k
   * `https://node.sovroute.com/llms.txt` (`200 OK`)
   * `https://node.sovroute.com/openapi.json` (`200 OK` — TaskFuel `x-payment-info` uyumlu OpenAPI 3.1.0)
   * `https://node.sovroute.com/mcp-config.json` (`200 OK` — Tek tıkla Claude / Cursor MCP yapılandırması)
-* [x] **İzole 4 Raylı (Quad-Rail / Omni-Rail) Ağ Geçidi (`/v1/omni/*`):**
-  * TaskFuel prodüksiyon uçlarından tamamen izole olarak aynı HTTP 402 yanıtında **1. Lightning (`L402`)**, **2. Base (`USDC`)**, **3. Solana (`SPL USDC` & `Native SOL`)** ve **4. Multi-EVM (`Arbitrum`, `Optimism`, `Polygon`, `Ethereum Mainnet`)** kabul eden `/v1/omni/rails`, `/v1/omni/btc/mempool`, `/v1/omni/btc/rbf-shield/:txid` ve `/v1/omni/btc/fees` uçları canlıya alındı ve Replay korumasıyla doğrulandı.
+* [x] **İzole 4 Raylı (Quad-Rail / Omni-Rail) Ağ Geçidi (`/v1/omni/*`) & Gerçek Cüzdan On-Chain Kanıtları:**
+  * TaskFuel prodüksiyon uçlarından tamamen izole olarak aynı HTTP 402 yanıtında **1. Lightning (`L402`)**, **2. Base (`USDC/ETH`)**, **3. Solana (`SPL USDC` & `Native SOL`)** ve **4. Multi-EVM (`Linea`, `Arbitrum`, `Optimism`, `Polygon`, `Ethereum Mainnet`)** kabul eden `/v1/omni/*` uçları canlıya alındı.
+  * **Gerçek Solana Mainnet Doğrulaması (`RAIL-3:SOLANA-MAINNET-ONCHAIN-VERIFIED`):**
+    * Cüzdan: `J7gD37zihrYnq7gcMU3ywTFP1G5UAU9SfSNpxfQBKFs7`
+    * On-Chain TX Signature: `3kKeJHwEQFrboxvj77McYympoLSFrtC82ZSftMwbfgrDZ8Qda3v4rzCGxQ5bXch36UPuFaL8ZFZ4t54zejUhHmuo` (Slot: `466246092`)
+    * Replay Koruması: İkinci denemede `402 Solana Replay Rejected` ile başarıyla engellendi.
+  * **Gerçek MetaMask Base Mainnet Doğrulaması (`RAIL-4:EVM-BASE-MAINNET-ONCHAIN-VERIFIED`):**
+    * Gönderen (`Proofwax`): `0xb30ded1b7bc90e459a9820aaaf0297165e9f30fa` → Alıcı (`SovRoute Kasa`): `0x488cbDad29E60d8Bae53FFF4c4252C9711dF9784`
+    * On-Chain TX #1: `0x8d31cacd2b77722ce841ecc1514ec96a5b1c410689c84c6d86cd0bb20220240a` (Base Block: `54408092`, Tutar: `400000000000 wei`)
+    * On-Chain TX #2: `0xc24d1d54976e89c835130a2aa296552894abfb4b2e79936bc712609145d5e757` (Base Block: `54408304`, Tutar: `400000000000 wei`)
 * [x] **Tüm Testler Yeşil:** 17 otomatik testin 17'si de (`tests/live-node.test.ts`, `tests/omni-rail.test.ts`, `tests/l402.test.ts`, `tests/htlc.test.ts`, `tests/mcp-server.test.ts`) canlı düğüm üzerinde %100 başarıyla geçti.
 
 ---

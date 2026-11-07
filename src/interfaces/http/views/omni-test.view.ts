@@ -201,6 +201,7 @@ export function renderOmniTestHtml(): string {
             from,
             to: PAY_TO_EVM,
             value: '0x5d21dba000',
+            gas: '0x5208',
           }],
         });
 
