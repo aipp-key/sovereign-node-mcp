@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import { BitcoinRpcAdapter } from './infrastructure/bitcoin/bitcoin-rpc.adapter.js';
 import { LndGatewayAdapter } from './infrastructure/lightning/lnd-gateway.adapter.js';
 import { PhoenixdGatewayAdapter } from './infrastructure/lightning/phoenixd-gateway.adapter.js';
+import { PhoenixdPayerAdapter } from './infrastructure/lightning/phoenixd-payer.adapter.js';
 import { NodeTruthService } from './application/services/node-truth.service.js';
 import { L402Service } from './application/services/l402.service.js';
 import { createNodeTruthRouter } from './interfaces/http/controllers/node-truth.controller.js';
@@ -43,10 +44,14 @@ async function bootstrap() {
   // 2. Application Layer Services
   const nodeTruthService = new NodeTruthService(bitcoinAdapter);
   const l402Service = new L402Service(lightningGateway);
+  const phoenixdPayer = new PhoenixdPayerAdapter({
+    baseUrl: process.env.PHOENIXD_URL || 'http://127.0.0.1:9740',
+    httpPassword: process.env.PHOENIXD_PASSWORD || '__G3mE5-OJwzyIdNmMMxNQRnjqb-uK-w',
+  });
 
   // 3. Transport Layer Routers
   const router = createNodeTruthRouter(nodeTruthService, l402Service);
-  const omniRouter = createOmniRailRouter(nodeTruthService, l402Service);
+  const omniRouter = createOmniRailRouter(nodeTruthService, l402Service, phoenixdPayer);
   app.use(router);
   app.use(omniRouter);
 

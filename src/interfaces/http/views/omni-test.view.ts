@@ -111,7 +111,7 @@ export function renderOmniTestHtml(): string {
   <div class="grid">
     <!-- RAIL 2 & 4: MetaMask EVM -->
     <div class="card">
-      <span class="badge b-evm">Ray 2 & 4 • MetaMask EVM (Base / Linea ETH)</span>
+      <span class="badge b-evm">Ray 2 & 4 • MetaMask EVM (Base & Arbitrum ETH)</span>
       <h3>🦊 MetaMask ile Gerçek On-Chain Öde</h3>
       <p style="font-size:12.5px;color:var(--muted);">
         MetaMask cüzdanınızdan (<code>0xB30DeD...F30fa</code>) kasamıza <strong>0.0000004 ETH (~$0.001)</strong> gönderir ve gerçek blokzincir RPC'si üzerinden doğrulayarak veriyi açar.
@@ -120,8 +120,8 @@ export function renderOmniTestHtml(): string {
       <button class="btn-evm" onclick="payWithMetaMask('0x2105', 'eip155:8453', 'Base Mainnet')">
         🔵 Base ETH ile Öde & Doğrula (~$0.001)
       </button>
-      <button class="btn-linea" onclick="payWithMetaMask('0xe708', 'eip155:59144', 'Linea Mainnet')">
-        ⚫ Linea ETH ile Öde & Doğrula (~$0.001)
+      <button class="btn-linea" onclick="payWithMetaMask('0xa4b1', 'eip155:42161', 'Arbitrum One')">
+        🔷 Arbitrum One ETH ile Öde & Doğrula (~$0.001)
       </button>
     </div>
 
@@ -201,7 +201,6 @@ export function renderOmniTestHtml(): string {
             from,
             to: PAY_TO_EVM,
             value: '0x5d21dba000',
-            gas: '0x5208',
           }],
         });
 

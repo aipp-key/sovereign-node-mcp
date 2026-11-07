@@ -23,6 +23,31 @@ function validateTxidParam(req: Request, res: Response, next: NextFunction): voi
   next();
 }
 
+function validateOptionalTxid(req: Request, res: Response, next: NextFunction): void {
+  const rawParam = req.params.txid || (req.query.txid as string | undefined);
+  const txid = Array.isArray(rawParam) ? rawParam[0] : rawParam;
+  if (txid && !/^[0-9a-fA-F]{64}$/.test(txid)) {
+    res.status(400).json({ error: 'Invalid optional 64-character hex transaction ID' });
+    return;
+  }
+  next();
+}
+
+function validateRawTxHexBody(req: Request, res: Response, next: NextFunction): void {
+  const rawTxHex = req.body?.rawTxHex;
+  if (
+    typeof rawTxHex !== 'string' ||
+    !/^[0-9a-fA-F]{100,200000}$/.test(rawTxHex) ||
+    rawTxHex.length % 2 !== 0
+  ) {
+    res.status(400).json({
+      error: 'Invalid rawTxHex in request body. Must be an even-length hex string (100-200000 chars).',
+    });
+    return;
+  }
+  next();
+}
+
 export function createNodeTruthRouter(
   nodeTruthService: NodeTruthService,
   l402Service: L402Service
@@ -77,6 +102,22 @@ export function createNodeTruthRouter(
           priceSats: 5,
           priceUsd: '$0.005',
           desc: '0-Conf BIP-125 RBF Double-Spend Fraud Shield',
+        },
+        {
+          path: '/v1/chain/btc/next-block-xray',
+          alias: '/v1/truth/next-block-xray',
+          method: 'GET',
+          priceSats: 3,
+          priceUsd: '$0.003',
+          desc: 'Live Miner Candidate Block Template X-Ray & Queue Rank Oracle',
+        },
+        {
+          path: '/v1/chain/btc/simulate-tx',
+          alias: '/v1/truth/simulate-tx',
+          method: 'POST',
+          priceSats: 5,
+          priceUsd: '$0.005',
+          desc: 'Zero-Broadcast Bitcoin Core v31.1 Consensus & Script Dry-Run Simulator',
         },
         {
           path: '/v1/chain/btc/block',
@@ -255,6 +296,67 @@ export function createNodeTruthRouter(
         });
       } catch (err: any) {
         res.status(500).json({ error: 'Topology Query Failed', details: err.message });
+      }
+    }
+  );
+
+  // Protected: Live Miner Candidate Block Template X-Ray (3 sats / $0.003 USDC)
+  router.get(
+    [
+      '/v1/chain/btc/next-block-xray',
+      '/v1/chain/btc/next-block-xray/:txid',
+      '/v1/truth/next-block-xray',
+      '/v1/truth/next-block-xray/:txid',
+    ],
+    validateOptionalTxid,
+    createL402Middleware(l402Service, {
+      priceSats: 3,
+      priceUsdcAtomic: '3000',
+      priceUsdDisplay: '$0.003',
+      resourceName: 'next-block-xray',
+      description:
+        'Live Bitcoin Core v31.1 getblocktemplate X-Ray: exact candidate block cutoff fee rate, total fees, whale transactions, and exact queue rank for any txid.',
+    }),
+    async (req: Request, res: Response) => {
+      const rawParam = req.params.txid || (req.query.txid as string | undefined);
+      const txid = Array.isArray(rawParam) ? rawParam[0] : rawParam;
+      try {
+        const xrayData = await nodeTruthService.getNextBlockXray(txid);
+        res.json({
+          source: 'sovereign-bitcoind:31.1 (getblocktemplate Candidate Block Engine)',
+          paymentRail: (req as any).paymentRail || 'L402-LIGHTNING',
+          verification: 'Cryptographic Dual-Rail Access',
+          data: xrayData,
+        });
+      } catch (err: any) {
+        res.status(500).json({ error: 'Next Block X-Ray Query Failed', details: err.message });
+      }
+    }
+  );
+
+  // Protected: Zero-Broadcast Consensus & Script Dry-Run Simulator (5 sats / $0.005 USDC)
+  router.post(
+    ['/v1/chain/btc/simulate-tx', '/v1/truth/simulate-tx'],
+    validateRawTxHexBody,
+    createL402Middleware(l402Service, {
+      priceSats: 5,
+      priceUsdcAtomic: '5000',
+      priceUsdDisplay: '$0.005',
+      resourceName: 'simulate-tx-consensus',
+      description:
+        'Zero-Broadcast Bitcoin Core v31.1 testmempoolaccept consensus & script dry-run simulator. Never broadcasts to P2P network.',
+    }),
+    async (req: Request, res: Response) => {
+      try {
+        const simData = await nodeTruthService.simulateTxConsensus(req.body.rawTxHex);
+        res.json({
+          source: 'sovereign-bitcoind:31.1 (testmempoolaccept Zero-Broadcast Engine)',
+          paymentRail: (req as any).paymentRail || 'L402-LIGHTNING',
+          verification: 'Cryptographic Dual-Rail Access',
+          data: simData,
+        });
+      } catch (err: any) {
+        res.status(500).json({ error: 'Transaction Simulation Failed', details: err.message });
       }
     }
   );

@@ -49,7 +49,11 @@ TaskFuel kataloğundaki *"Crypto & Prediction Markets -> Read the Blockchain"* k
     * Base On-Chain TX #2: `0xc24d1d54976e89c835130a2aa296552894abfb4b2e79936bc712609145d5e757` (Base Block: `54408304`)
     * Arbitrum One On-Chain TX #1: `0xe0e2589c1cbb85d6b4281a0e23273ea18a018b9e1c52618da896cf16c1249c86` (Arbitrum Block: `522144979`, Tutar: `400 Gwei`)
     * Arbitrum One On-Chain TX #2: `0xc8c0338954f2117ac26f0c18f9b3037778b19d83ecdc8e57e5ab36bb442fe331` (Arbitrum Block: `522145096`, Tutar: `400 Gwei`)
-* [x] **Tüm Testler Yeşil:** 17 otomatik testin 17'si de (`tests/live-node.test.ts`, `tests/omni-rail.test.ts`, `tests/l402.test.ts`, `tests/htlc.test.ts`, `tests/mcp-server.test.ts`) canlı düğüm üzerinde %100 başarıyla geçti.
+* [x] **Paradigma Değiştiren 3 Yeni Uç Nokta (%0 P2P Yayın Riski ile):**
+  * `GET /v1/chain/btc/next-block-xray` (ve `/v1/omni/btc/next-block-xray`): Canlı madenci aday blok şablonu röntgeni (`getblocktemplate`). Sıradaki bloğa girecek ~3,800 işlemin tam listesini, taban kesim ücretini (`cutoffFeeRateSatPerVb`), blok doluluk oranını ve sorgulanan herhangi bir `?txid=` / `:txid` işleminin blok içindeki tam sırasını (`rankInBlock`, `GUARANTEED_NEXT_BLOCK` / `QUEUED_FOR_LATER_BLOCK`) döner.
+  * `POST /v1/chain/btc/simulate-tx` (ve `/v1/omni/btc/simulate-tx`): Sıfır-Yayın (Zero-Broadcast) Konsensüs & Script Simülatörü (`testmempoolaccept` + `decoderawtransaction`). İmzalı ham Bitcoin işlemini (`rawTxHex`) P2P ağına **hiç yayınlamadan** (`broadcastedToNetwork: false`) Bitcoin Core v31.1 UTXO seti üzerinde test eder.
+  * `POST /v1/omni/pay-lightning`: SUB-LIG Cüzdansız Cross-Chain Lightning Köprüsü. Sadece Solana (`SOL`/`USDC`) veya EVM (`Base`/`Arbitrum`) cüzdanı olan ajanların ödemesini alıp `<= 25 sats` tutarındaki herhangi bir BOLT-11 faturasını `PhoenixdPayerAdapter` ile anında öder ve kriptografik `paymentPreimage` kanıtını döner.
+* [x] **Tüm Testler Yeşil:** 19 otomatik testin 19'u da (`tests/live-node.test.ts`, `tests/omni-rail.test.ts`, `tests/l402.test.ts`, `tests/htlc.test.ts`, `tests/mcp-server.test.ts`) canlı düğüm üzerinde %100 başarıyla geçti.
 
 ---
 

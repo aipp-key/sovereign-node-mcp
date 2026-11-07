@@ -86,9 +86,64 @@ export const VerifiableNodeAttestationSchema = z.object({
   timestamp: z.number().int().positive(),
 });
 
+export const NextBlockXraySchema = z.object({
+  candidateBlockHeight: z.number().int().positive(),
+  previousBlockHash: Hex64Schema,
+  totalTransactions: z.number().int().nonnegative(),
+  totalWeight: z.number().int().nonnegative(),
+  blockFillPercentage: z.number().nonnegative(),
+  totalFeeSats: z.number().int().nonnegative(),
+  coinbaseRewardSats: z.number().int().nonnegative(),
+  cutoffFeeRateSatPerVb: z.number().nonnegative(),
+  medianFeeRateSatPerVb: z.number().nonnegative(),
+  topFeeRateSatPerVb: z.number().nonnegative(),
+  topWhaleTransactions: z.array(
+    z.object({
+      rank: z.number().int().positive(),
+      txid: Hex64Schema,
+      feeSats: z.number().int().nonnegative(),
+      vsize: z.number().int().positive(),
+      feeRateSatPerVb: z.number().nonnegative(),
+    })
+  ),
+  inspectedTransaction: z
+    .object({
+      txid: Hex64Schema,
+      inCandidateBlock: z.boolean(),
+      rankInBlock: z.number().int().positive().nullable(),
+      percentileInBlock: z.number().nonnegative().nullable(),
+      feeSats: z.number().int().nonnegative().nullable(),
+      feeRateSatPerVb: z.number().nonnegative().nullable(),
+      verdict: z.enum(['GUARANTEED_NEXT_BLOCK', 'QUEUED_FOR_LATER_BLOCK', 'NOT_IN_MEMPOOL']),
+    })
+    .optional(),
+  updatedAt: z.number().int().positive(),
+});
+
+export const TxConsensusSimulationSchema = z.object({
+  txid: Hex64Schema,
+  wtxid: Hex64Schema,
+  consensusAllowed: z.boolean(),
+  alreadyInMempool: z.boolean(),
+  rejectReason: z.string().nullable(),
+  vsize: z.number().int().positive(),
+  weight: z.number().int().positive(),
+  version: z.number().int(),
+  locktime: z.number().int().nonnegative(),
+  inputCount: z.number().int().nonnegative(),
+  outputCount: z.number().int().nonnegative(),
+  totalOutputSats: z.number().int().nonnegative(),
+  signalsBip125Rbf: z.boolean(),
+  nextBlockCutoffSatPerVb: z.number().nonnegative(),
+  broadcastedToNetwork: z.literal(false),
+  simulatedAt: z.number().int().positive(),
+});
+
 export type MempoolEntropy = z.infer<typeof MempoolEntropySchema>;
 export type SmartFeeProjection = z.infer<typeof SmartFeeProjectionSchema>;
 export type RbfShieldAssessment = z.infer<typeof RbfShieldAssessmentSchema>;
 export type BlockHeaderTruth = z.infer<typeof BlockHeaderTruthSchema>;
 export type LightningTopologySignal = z.infer<typeof LightningTopologySignalSchema>;
+export type NextBlockXray = z.infer<typeof NextBlockXraySchema>;
+export type TxConsensusSimulation = z.infer<typeof TxConsensusSimulationSchema>;
 export type VerifiableNodeAttestation = z.infer<typeof VerifiableNodeAttestationSchema>;

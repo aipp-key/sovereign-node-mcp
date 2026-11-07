@@ -115,7 +115,18 @@ test('Quad-Rail (/v1/omni/*) Gateway: Verifies all 4 payment rails (Lightning L4
 
   const app = express();
   app.use(express.json());
-  app.use(createOmniRailRouter(nodeTruthService, l402Service));
+  const mockPayer = {
+    paidInvoices: [] as string[],
+    async payInvoice(inv: string) {
+      this.paidInvoices.push(inv);
+      return {
+        paymentHash: 'aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899',
+        preimage: '11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff',
+        feeSat: 1,
+      };
+    },
+  };
+  app.use(createOmniRailRouter(nodeTruthService, l402Service, mockPayer));
 
   const server = app.listen(0);
   const address = server.address();
@@ -250,6 +261,43 @@ test('Quad-Rail (/v1/omni/*) Gateway: Verifies all 4 payment rails (Lightning L4
     assert.strictEqual(rail4EthRes.status, 200);
     const rail4EthData: any = await rail4EthRes.json();
     assert.strictEqual(rail4EthData.paymentRail, 'RAIL-4:EVM-ETHEREUM-MAINNET-ETH');
+
+    // 8. SUB-LIG Walletless Lightning Bridge (/v1/omni/pay-lightning):
+    // 8a. Rejects invoice > 25 sats BEFORE charging user
+    const overCapRes = await fetch(`${baseUrl}/v1/omni/pay-lightning`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoice: 'lnbc1m1p4w7c87pp5hxkrcp' }), // 1m = 100,000 sats > 25 sats cap
+    });
+    assert.strictEqual(overCapRes.status, 400, 'Over-cap invoice must return 400 before payment');
+
+    // 8b. Settles valid 5-sat invoice (lnbc50n1...) when paid via Solana USDC
+    const bridgeSolPayload = Buffer.from(
+      JSON.stringify({
+        network: 'solana:mainnet',
+        to: SOLANA_PAY_TO_ADDRESS,
+        asset: SOLANA_USDC_MINT,
+        amount: '25000',
+        signature: '5SolanaSubLigBridgeSigUnique00000000000000000009',
+      })
+    ).toString('base64');
+
+    const bridgeRes = await fetch(`${baseUrl}/v1/omni/pay-lightning`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Solana-Payment': bridgeSolPayload,
+      },
+      body: JSON.stringify({ invoice: 'lnbc50n1p4w7c87pp5hxkrcp' }), // 50n = 5 sats
+    });
+    assert.strictEqual(bridgeRes.status, 200);
+    const bridgeData: any = await bridgeRes.json();
+    assert.strictEqual(bridgeData.status, 'SETTLED');
+    assert.strictEqual(bridgeData.lightningSettlement.invoiceAmountSats, 5);
+    assert.strictEqual(
+      bridgeData.lightningSettlement.preimage,
+      '11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff'
+    );
   } finally {
     server.close();
   }

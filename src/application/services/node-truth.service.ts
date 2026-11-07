@@ -4,6 +4,8 @@ import {
   LightningTopologySignal,
   SmartFeeProjection,
   RbfShieldAssessment,
+  NextBlockXray,
+  TxConsensusSimulation,
 } from '../../domain/schemas/node-truth.schema.js';
 import { INodeTruthRepository } from '../interfaces/node-truth.interface.js';
 
@@ -28,5 +30,19 @@ export class NodeTruthService {
 
   async getLightningTopology(): Promise<LightningTopologySignal> {
     return this.repository.getLightningTopology();
+  }
+
+  async getNextBlockXray(txid?: string): Promise<NextBlockXray> {
+    if (!this.repository.getNextBlockXray) {
+      throw new Error('getNextBlockXray is not implemented by the active repository');
+    }
+    return this.repository.getNextBlockXray(txid);
+  }
+
+  async simulateTxConsensus(rawTxHex: string): Promise<TxConsensusSimulation> {
+    if (!this.repository.simulateTxConsensus) {
+      throw new Error('simulateTxConsensus is not implemented by the active repository');
+    }
+    return this.repository.simulateTxConsensus(rawTxHex);
   }
 }

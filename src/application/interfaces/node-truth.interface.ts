@@ -4,6 +4,8 @@ import {
   LightningTopologySignal,
   SmartFeeProjection,
   RbfShieldAssessment,
+  NextBlockXray,
+  TxConsensusSimulation,
 } from '../../domain/schemas/node-truth.schema.js';
 
 export interface INodeTruthRepository {
@@ -12,4 +14,6 @@ export interface INodeTruthRepository {
   checkRbfShield(txid: string): Promise<RbfShieldAssessment>;
   getLatestBlockHeader(): Promise<BlockHeaderTruth>;
   getLightningTopology(): Promise<LightningTopologySignal>;
+  getNextBlockXray?(txid?: string): Promise<NextBlockXray>;
+  simulateTxConsensus?(rawTxHex: string): Promise<TxConsensusSimulation>;
 }

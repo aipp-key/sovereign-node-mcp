@@ -7,11 +7,20 @@ import {
   LightningTopologySignal,
   SmartFeeProjection,
   RbfShieldAssessment,
+  NextBlockXray,
+  TxConsensusSimulation,
   MempoolEntropySchema,
   SmartFeeProjectionSchema,
   RbfShieldAssessmentSchema,
   BlockHeaderTruthSchema,
 } from '../../domain/schemas/node-truth.schema.js';
+import {
+  CachedBlockTemplate,
+  buildCachedBlockTemplate,
+  buildRbfFromMempoolEntry,
+  finalizeNextBlockXray,
+  buildTxConsensusSimulation,
+} from './bitcoin-forensics.helper.js';
 
 const execAsync = promisify(exec);
 
@@ -25,6 +34,7 @@ export class BitcoinRpcAdapter implements INodeTruthRepository {
   private mempoolCache: { data: MempoolEntropy; expiresAt: number } | null = null;
   private smartFeeCache: { data: SmartFeeProjection; expiresAt: number } | null = null;
   private blockCache: { data: BlockHeaderTruth; expiresAt: number } | null = null;
+  private templateCache: CachedBlockTemplate | null = null;
   private readonly cacheTtlMs: number;
 
   constructor(private readonly config: BitcoinRpcConfig) {
@@ -39,6 +49,19 @@ export class BitcoinRpcAdapter implements INodeTruthRepository {
     const { stdout, stderr } = await execAsync(fullCommand, { maxBuffer: 16 * 1024 * 1024 });
     if (stderr && !stdout) {
       throw new Error(`Bitcoin Node RPC Error: ${stderr}`);
+    }
+    return stdout.trim();
+  }
+
+  private async executeNodeStdinCommand(subcommand: string, stdinText: string): Promise<string> {
+    const b64 = Buffer.from(stdinText, 'utf8').toString('base64');
+    const isLocal = this.config.tailscaleHost === '127.0.0.1' || this.config.tailscaleHost === 'localhost';
+    const fullCommand = isLocal
+      ? `sh -c 'echo ${b64} | base64 -d | docker exec -i ${this.config.containerName} bitcoin-cli -conf=/config/bitcoin.conf -datadir=/data -stdin ${subcommand}'`
+      : `ssh -o ConnectTimeout=5 -o BatchMode=yes root@${this.config.tailscaleHost} "echo ${b64} | base64 -d | docker exec -i ${this.config.containerName} bitcoin-cli -conf=/config/bitcoin.conf -datadir=/data -stdin ${subcommand}"`;
+    const { stdout, stderr } = await execAsync(fullCommand, { maxBuffer: 32 * 1024 * 1024 });
+    if (stderr && !stdout) {
+      throw new Error(`Bitcoin Node RPC Stdin Error: ${stderr}`);
     }
     return stdout.trim();
   }
@@ -129,55 +152,7 @@ export class BitcoinRpcAdapter implements INodeTruthRepository {
       const rawOutput = await this.executeNodeCommand(
         `bitcoin-cli -conf=/config/bitcoin.conf -datadir=/data getmempoolentry ${txid}`
       );
-      const parsed = JSON.parse(rawOutput);
-
-      const bip125 = parsed['bip125-replaceable'] === true;
-      const vsize = parsed.vsize || 1;
-      const ancestorCount = parsed.ancestorcount || 1;
-      const ancestorSize = parsed.ancestorsize || vsize;
-      const totalFeeSats = Math.round((parsed.fees?.base || 0) * 100_000_000);
-      const ancestorFeeSats = Math.round((parsed.fees?.ancestor ?? parsed.fees?.base ?? 0) * 100_000_000);
-
-      const baseFeeRate = totalFeeSats / vsize;
-      const ancestorFeeRate = ancestorFeeSats / ancestorSize;
-      const feeRateSatPerVb = Number(Math.min(baseFeeRate, ancestorFeeRate).toFixed(2));
-      const hasConflicts = Array.isArray(parsed.spentby) && parsed.spentby.length > 0;
-
-      let zeroConfRiskLevel: 'SAFE' | 'MEDIUM_RISK' | 'HIGH_RISK_RBF_ENABLED' | 'NOT_FOUND' = 'SAFE';
-      let recommendation = 'Safe for instant 0-conf settlement. No RBF signaled.';
-
-      if (hasConflicts) {
-        zeroConfRiskLevel = 'HIGH_RISK_RBF_ENABLED';
-        recommendation = 'CRITICAL ALERT: Conflicting spend detected in mempool! Do NOT deliver goods!';
-      } else if (bip125) {
-        zeroConfRiskLevel = 'HIGH_RISK_RBF_ENABLED';
-        recommendation =
-          ancestorCount > 1
-            ? `WARNING: BIP-125 RBF enabled (ancestor chain depth: ${ancestorCount}). Transaction or parent can be replaced. Wait for 1 block confirmation.`
-            : 'WARNING: BIP-125 RBF is enabled by sender. Transaction can be replaced. Wait for 1 block confirmation.';
-      } else if (ancestorCount > 2 || feeRateSatPerVb < 1.5) {
-        zeroConfRiskLevel = 'MEDIUM_RISK';
-        recommendation =
-          ancestorCount > 2
-            ? `CAUTION: Unconfirmed parent chain (depth: ${ancestorCount}) increases replacement/eviction risk.`
-            : 'CAUTION: Fee rate is low; confirmation may be delayed.';
-      }
-
-      const payload = {
-        txid,
-        isInMempool: true,
-        confirmations: 0,
-        bip125Replaceable: bip125,
-        vsize,
-        feeRateSatPerVb,
-        ancestorCount,
-        hasConflicts,
-        zeroConfRiskLevel,
-        recommendation,
-        updatedAt: Math.floor(Date.now() / 1000),
-      };
-
-      return RbfShieldAssessmentSchema.parse(payload);
+      return buildRbfFromMempoolEntry(txid, JSON.parse(rawOutput));
     } catch {
       // Not in mempool: probe UTXO set (vout 0 and 1) to check if already confirmed in a block
       try {
@@ -241,6 +216,70 @@ export class BitcoinRpcAdapter implements INodeTruthRepository {
       throw new Error('Mempool is currently empty or failed to extract sample txid');
     }
     return txid;
+  }
+
+  private async ensureBlockTemplateCache(): Promise<CachedBlockTemplate> {
+    const now = Date.now();
+    if (this.templateCache && this.templateCache.expiresAt > now) {
+      return this.templateCache;
+    }
+    const rawOutput = await this.executeNodeStdinCommand(
+      'getblocktemplate',
+      '{"rules":["segwit"]}\n'
+    );
+    const parsed = JSON.parse(rawOutput);
+    this.templateCache = buildCachedBlockTemplate(parsed, this.cacheTtlMs);
+    return this.templateCache;
+  }
+
+  async getNextBlockXray(txid?: string): Promise<NextBlockXray> {
+    const cached = await this.ensureBlockTemplateCache();
+    if (!txid) {
+      return finalizeNextBlockXray(cached);
+    }
+
+    if (!/^[0-9a-fA-F]{64}$/.test(txid)) {
+      throw new Error('Invalid 64-character hex transaction ID');
+    }
+
+    if (cached.txMap.has(txid)) {
+      return finalizeNextBlockXray(cached, txid);
+    }
+
+    // Check if it's in the lower-fee mempool outside the next candidate block
+    const rbfCheck = await this.checkRbfShield(txid);
+    const fallbackFeeRate = rbfCheck.isInMempool ? rbfCheck.feeRateSatPerVb : null;
+    return finalizeNextBlockXray(cached, txid, fallbackFeeRate);
+  }
+
+  async simulateTxConsensus(rawTxHex: string): Promise<TxConsensusSimulation> {
+    if (!rawTxHex || !/^[0-9a-fA-F]{100,200000}$/.test(rawTxHex) || rawTxHex.length % 2 !== 0) {
+      throw new Error('Invalid raw Bitcoin transaction hex string');
+    }
+
+    const [acceptRaw, decodedRaw, cachedTemplate] = await Promise.all([
+      this.executeNodeStdinCommand('testmempoolaccept', `["${rawTxHex}"]\n`),
+      this.executeNodeStdinCommand('decoderawtransaction', `${rawTxHex}\n`),
+      this.ensureBlockTemplateCache(),
+    ]);
+
+    const acceptArr = JSON.parse(acceptRaw);
+    const acceptResult = Array.isArray(acceptArr) ? acceptArr[0] : acceptArr;
+    const decodedTx = JSON.parse(decodedRaw);
+
+    return buildTxConsensusSimulation(
+      acceptResult,
+      decodedTx,
+      cachedTemplate.baseXray.cutoffFeeRateSatPerVb
+    );
+  }
+
+  async getSampleCandidateRawTxHex(): Promise<{ txid: string; rawTxHex: string }> {
+    const cached = await this.ensureBlockTemplateCache();
+    if (!cached.sampleRawTxHex || !cached.sampleTxid) {
+      throw new Error('No sample transaction available in candidate block template');
+    }
+    return { txid: cached.sampleTxid, rawTxHex: cached.sampleRawTxHex };
   }
 
   async getLatestBlockHeader(): Promise<BlockHeaderTruth> {

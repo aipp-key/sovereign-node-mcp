@@ -1,6 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { NodeTruthService } from '../../../application/services/node-truth.service.js';
 import { L402Service } from '../../../application/services/l402.service.js';
+import { ILightningPayer } from '../../../application/interfaces/lightning-payer.interface.js';
+import { parseBolt11AmountSats } from '../../../infrastructure/bitcoin/bitcoin-forensics.helper.js';
 import {
   createOmniRailMiddleware,
   OMNI_RAIL_CORS_HEADERS,
@@ -11,6 +13,8 @@ import {
 } from '../middleware/omni-rail.middleware.js';
 import { BASE_PAY_TO_ADDRESS } from '../middleware/l402.middleware.js';
 import { renderOmniTestHtml } from '../views/omni-test.view.js';
+
+export const MAX_BRIDGE_INVOICE_SATS = 25;
 
 function validateTxidParam(req: Request, res: Response, next: NextFunction): void {
   const rawTxid = req.params.txid;
@@ -23,9 +27,59 @@ function validateTxidParam(req: Request, res: Response, next: NextFunction): voi
   next();
 }
 
+function validateOptionalTxid(req: Request, res: Response, next: NextFunction): void {
+  const rawParam = req.params.txid || (req.query.txid as string | undefined);
+  const txid = Array.isArray(rawParam) ? rawParam[0] : rawParam;
+  if (txid && !/^[0-9a-fA-F]{64}$/.test(txid)) {
+    res.status(400).json({ error: 'Invalid optional 64-character hex transaction ID' });
+    return;
+  }
+  next();
+}
+
+function validateRawTxHexBody(req: Request, res: Response, next: NextFunction): void {
+  const rawTxHex = req.body?.rawTxHex;
+  if (
+    typeof rawTxHex !== 'string' ||
+    !/^[0-9a-fA-F]{100,200000}$/.test(rawTxHex) ||
+    rawTxHex.length % 2 !== 0
+  ) {
+    res.status(400).json({
+      error: 'Invalid rawTxHex in request body. Must be an even-length hex string (100-200000 chars).',
+    });
+    return;
+  }
+  next();
+}
+
+function validateBridgeInvoiceBody(req: Request, res: Response, next: NextFunction): void {
+  const invoice = req.body?.invoice;
+  if (!invoice || typeof invoice !== 'string') {
+    res.status(400).json({ error: 'Missing BOLT-11 invoice string in request body' });
+    return;
+  }
+  const amountSats = parseBolt11AmountSats(invoice);
+  if (amountSats === null) {
+    res.status(400).json({
+      error: 'Invalid or amountless BOLT-11 Mainnet invoice. Must specify an exact integer satoshi amount.',
+    });
+    return;
+  }
+  if (amountSats > MAX_BRIDGE_INVOICE_SATS) {
+    res.status(400).json({
+      error: `Invoice amount (${amountSats} sats) exceeds micro-bridge safety cap of ${MAX_BRIDGE_INVOICE_SATS} sats.`,
+      maxAllowedSats: MAX_BRIDGE_INVOICE_SATS,
+    });
+    return;
+  }
+  (req as any).invoiceAmountSats = amountSats;
+  next();
+}
+
 export function createOmniRailRouter(
   nodeTruthService: NodeTruthService,
-  l402Service: L402Service
+  l402Service: L402Service,
+  lightningPayer?: ILightningPayer
 ): Router {
   const router = Router();
 
@@ -117,9 +171,18 @@ export function createOmniRailRouter(
         },
       ],
       endpoints: [
-        { path: '/v1/omni/btc/mempool', priceSats: 2, priceUsd: '$0.002' },
-        { path: '/v1/omni/btc/rbf-shield/:txid', priceSats: 5, priceUsd: '$0.005' },
-        { path: '/v1/omni/btc/fees', priceSats: 1, priceUsd: '$0.001' },
+        { path: '/v1/omni/btc/mempool', method: 'GET', priceSats: 2, priceUsd: '$0.002' },
+        { path: '/v1/omni/btc/rbf-shield/:txid', method: 'GET', priceSats: 5, priceUsd: '$0.005' },
+        { path: '/v1/omni/btc/fees', method: 'GET', priceSats: 1, priceUsd: '$0.001' },
+        { path: '/v1/omni/btc/next-block-xray', method: 'GET', priceSats: 3, priceUsd: '$0.003' },
+        { path: '/v1/omni/btc/simulate-tx', method: 'POST', priceSats: 5, priceUsd: '$0.005' },
+        {
+          path: '/v1/omni/pay-lightning',
+          method: 'POST',
+          maxInvoiceSats: MAX_BRIDGE_INVOICE_SATS,
+          priceUsd: '$0.025',
+          desc: 'Pay any BOLT-11 Lightning invoice (up to 25 sats) using Solana, Base, or Arbitrum and receive cryptographic preimage.',
+        },
       ],
     });
   });
@@ -205,6 +268,109 @@ export function createOmniRailRouter(
         });
       } catch (err: any) {
         res.status(500).json({ error: 'Omni Smart Fee Query Failed', details: err.message });
+      }
+    }
+  );
+
+  // 4-Rail Protected: Next Block X-Ray (getblocktemplate Oracle)
+  router.get(
+    ['/v1/omni/btc/next-block-xray', '/v1/omni/btc/next-block-xray/:txid'],
+    validateOptionalTxid,
+    createOmniRailMiddleware(l402Service, {
+      priceSats: 3,
+      priceUsdcAtomic: '3000',
+      priceSolLamports: '15000',
+      priceEthWei: '300000000000',
+      priceUsdDisplay: '$0.003',
+      resourceName: 'omni-next-block-xray',
+      description: 'Quad-Rail Live Bitcoin Core v31.1 Candidate Block Template X-Ray & Queue Rank Oracle',
+    }),
+    async (req: Request, res: Response) => {
+      const rawParam = req.params.txid || (req.query.txid as string | undefined);
+      const txid = Array.isArray(rawParam) ? rawParam[0] : rawParam;
+      try {
+        const xrayData = await nodeTruthService.getNextBlockXray(txid);
+        res.json({
+          source: 'sovereign-bitcoind:31.1 (getblocktemplate Candidate Block Engine)',
+          gateway: 'Quad-Rail (/v1/omni)',
+          paymentRail: (req as any).paymentRail,
+          onChainReceipt: (req as any).onChainReceipt || undefined,
+          data: xrayData,
+        });
+      } catch (err: any) {
+        res.status(500).json({ error: 'Omni Next Block X-Ray Failed', details: err.message });
+      }
+    }
+  );
+
+  // 4-Rail Protected: Zero-Broadcast Consensus & Script Dry-Run Simulator (testmempoolaccept)
+  router.post(
+    '/v1/omni/btc/simulate-tx',
+    validateRawTxHexBody,
+    createOmniRailMiddleware(l402Service, {
+      priceSats: 5,
+      priceUsdcAtomic: '5000',
+      priceSolLamports: '25000',
+      priceEthWei: '400000000000',
+      priceUsdDisplay: '$0.005',
+      resourceName: 'omni-simulate-tx',
+      description: 'Quad-Rail Zero-Broadcast Bitcoin Core v31.1 Consensus & Script Simulator',
+    }),
+    async (req: Request, res: Response) => {
+      try {
+        const simData = await nodeTruthService.simulateTxConsensus(req.body.rawTxHex);
+        res.json({
+          source: 'sovereign-bitcoind:31.1 (testmempoolaccept Zero-Broadcast Engine)',
+          gateway: 'Quad-Rail (/v1/omni)',
+          paymentRail: (req as any).paymentRail,
+          onChainReceipt: (req as any).onChainReceipt || undefined,
+          data: simData,
+        });
+      } catch (err: any) {
+        res.status(500).json({ error: 'Omni Tx Simulation Failed', details: err.message });
+      }
+    }
+  );
+
+  // 4-Rail Protected: Walletless Lightning Bridge (Pay any <=25 sat BOLT-11 invoice using Solana/Base/Arbitrum)
+  router.post(
+    '/v1/omni/pay-lightning',
+    validateBridgeInvoiceBody,
+    createOmniRailMiddleware(l402Service, {
+      priceSats: 25,
+      priceUsdcAtomic: '25000',
+      priceSolLamports: '100000',
+      priceEthWei: '400000000000',
+      priceUsdDisplay: '$0.025',
+      resourceName: 'omni-pay-lightning-bridge',
+      description:
+        'SUB-LIG Universal Bridge: Settle a BOLT-11 Lightning invoice (up to 25 sats) using Solana, Base, or Arbitrum and receive cryptographic preimage.',
+    }),
+    async (req: Request, res: Response) => {
+      if (!lightningPayer) {
+        res.status(503).json({ error: 'Lightning Payer backend is not configured on this node' });
+        return;
+      }
+      try {
+        const invoice: string = req.body.invoice.trim();
+        const invoiceAmountSats: number = (req as any).invoiceAmountSats;
+        const paymentResult = await lightningPayer.payInvoice(invoice);
+
+        res.json({
+          status: 'SETTLED',
+          bridge: 'SUB-LIG Quad-Rail -> Lightning Network',
+          paidByAgentViaRail: (req as any).paymentRail,
+          onChainReceipt: (req as any).onChainReceipt || undefined,
+          lightningSettlement: {
+            invoiceAmountSats,
+            paymentHash: paymentResult.paymentHash,
+            preimage: paymentResult.preimage,
+            routingFeeSat: paymentResult.feeSat,
+          },
+          settledAt: Math.floor(Date.now() / 1000),
+        });
+      } catch (err: any) {
+        res.status(500).json({ error: 'Lightning Bridge Settlement Failed', details: err.message });
       }
     }
   );

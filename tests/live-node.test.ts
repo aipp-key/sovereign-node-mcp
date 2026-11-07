@@ -163,6 +163,52 @@ test('BitcoinRpcAdapter connects to live Bitcoin Core and returns latest synchro
   console.log(`[LIVE NODE PROBE] Chain Tip Height: ${blockHeader.height}, Best Hash: ${blockHeader.hash}`);
 });
 
+test('BitcoinRpcAdapter extracts live Next-Block X-Ray (getblocktemplate) and ranks candidate transactions', async () => {
+  const adapter = new BitcoinRpcAdapter({
+    tailscaleHost: '100.95.119.88',
+    containerName: 'sovereign-bitcoind',
+  });
+
+  const xray = await adapter.getNextBlockXray();
+  assert.ok(xray.candidateBlockHeight > 974900);
+  assert.ok(xray.totalTransactions > 0, 'Next block template must contain candidate transactions');
+  assert.ok(xray.cutoffFeeRateSatPerVb > 0, 'Cutoff fee rate must be positive');
+  assert.ok(xray.topWhaleTransactions.length > 0, 'Must list top whale transactions');
+
+  const topTxid = xray.topWhaleTransactions[0].txid;
+  const inspected = await adapter.getNextBlockXray(topTxid);
+  assert.ok(inspected.inspectedTransaction);
+  assert.strictEqual(inspected.inspectedTransaction.inCandidateBlock, true);
+  assert.strictEqual(inspected.inspectedTransaction.verdict, 'GUARANTEED_NEXT_BLOCK');
+  assert.ok((inspected.inspectedTransaction.rankInBlock ?? 0) >= 1);
+
+  console.log(
+    `[LIVE NEXT-BLOCK XRAY] Candidate Height: ${xray.candidateBlockHeight} | Txs: ${xray.totalTransactions} | Fill: ${xray.blockFillPercentage}% | Cutoff: ${xray.cutoffFeeRateSatPerVb} sat/vB | Top Whale Rank #${inspected.inspectedTransaction.rankInBlock} (${inspected.inspectedTransaction.feeSats} sats)`
+  );
+});
+
+test('BitcoinRpcAdapter simulates raw transaction consensus (testmempoolaccept) with 0% P2P broadcast', async () => {
+  const adapter = new BitcoinRpcAdapter({
+    tailscaleHost: '100.95.119.88',
+    containerName: 'sovereign-bitcoind',
+  });
+
+  const sample = await adapter.getSampleCandidateRawTxHex();
+  const sim = await adapter.simulateTxConsensus(sample.rawTxHex);
+
+  assert.strictEqual(sim.txid, sample.txid);
+  assert.strictEqual(sim.consensusAllowed, true);
+  assert.strictEqual(sim.alreadyInMempool, true);
+  assert.strictEqual(sim.broadcastedToNetwork, false);
+  assert.ok(sim.vsize > 0);
+  assert.ok(sim.inputCount >= 1);
+  assert.ok(sim.outputCount >= 1);
+
+  console.log(
+    `[LIVE CONSENSUS SIMULATOR] TXID: ${sim.txid.slice(0, 16)}... | Allowed: ${sim.consensusAllowed} | VSize: ${sim.vsize} vB | Outputs: ${sim.outputCount} (${sim.totalOutputSats} sats) | RBF: ${sim.signalsBip125Rbf} | Broadcasted: ${sim.broadcastedToNetwork}`
+  );
+});
+
 test('E2E HTTP Router: /v1/chain/btc/rbf-shield/:txid & /v1/chain/btc/mempool enforce pre-payment validation & L402 settlement', async () => {
   const adapter = new BitcoinRpcAdapter({
     tailscaleHost: '100.95.119.88',
