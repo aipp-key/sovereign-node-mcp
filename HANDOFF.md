@@ -1,8 +1,9 @@
 # 🚀 SOVEREIGN NODE ENGINE — DEVİR TESLİM VE STRATEJİK YOL HARİTASI (HANDOFF)
 
-**Tarih:** 5 Kasım 2026 / 6 Kasım 2026 Planı  
+**Son Güncelleme:** 7 Kasım 2026 (Cumartesi) — Pazartesi Lansmanına Hazır  
 **Yerel Proje Dizini:** `C:\Users\faruk\Desktop\dev\sovereign-node-engine`  
 **Canlı Sunucu Dizini:** `/srv/sovereign-node-engine` (`100.95.119.88:3088` - Tailscale)  
+**Canlı Ağ Geçidi:** `https://node.sovroute.com`  
 **Özel Git Deposu (Gitea):** `http://100.95.119.88:3030/aipp/sovereign-node-engine`  
 
 ---
@@ -11,90 +12,64 @@
 
 TaskFuel kataloğundaki *"Crypto & Prediction Markets -> Read the Blockchain"* kategorisinde yer alan 152 uç nokta ve 6 sağlayıcı (Glassnode, OneSource, Otto AI, 2s, BlockRun, SovRoute) detaylı olarak analiz edilmiştir:
 
-### Piyasanın Durumu ve Rakiplerin Zayıf Noktaları:
 1. **Aşırı Ethereum/Base Yoğunlaşması:** OneSource ve Otto AI neredeyse tamamen EVM/Base odaklıdır (`eth_*`, ERC-20, ENS, gas oracle). Bitcoin tarafında yoklar.
 2. **Aşırı Yüksek Fiyatlandırma:** Glassnode makro metrikler için çağrı başına **5¢ ($0.05)** talep etmektedir.
 3. **Yüzeysel ve Pahalı Bitcoin Verisi (2s.io):**
-   * Listede Bitcoin'e dokunan tek sağlayıcı olan `2s.io`, çağrı başına **0.25¢ - 0.36¢** (SovRoute'un 0.1¢ fiyatının 3.5 katı) ücret almaktadır.
-   * Kendi açıklamalarında `"(free/keyless)"` ibaresi yer almakta olup, kendi bare-metal düğümleri yerine halka açık üçüncü parti API'leri sarmaladıkları görülmektedir.
+   * Listede Bitcoin'e dokunan tek sağlayıcı olan `2s.io`, çağrı başına **0.25¢ - 0.36¢** ücret almaktadır ve kendi bare-metal düğümleri yerine halka açık üçüncü parti API'leri sarmalamaktadır.
 4. **Büyük Ödeme Rayı Açığı (Piyasanın Kör Noktası):**
-   * TaskFuel'deki sağlayıcıların tamamı (`x402.ottoai.services`, `x402.glassnode.com`, `onesource.io`, `2s.io`) **yalnızca Base USDC (x402)** kabul etmektedir.
-   * TaskFuel'in kurucusu **Moritz Kaminski (Alby ekibi)** olmasına rağmen, ekosistemde **Native Lightning Network (L402 Satoshis)** ile ödeme kabul eden neredeyse hiçbir sağlayıcı yoktur!
+   * TaskFuel'deki sağlayıcıların tamamı **yalnızca Base USDC (x402)** kabul etmektedir.
+   * TaskFuel'in kurucusu **Moritz Kaminski (Alby ekibi)** olmasına rağmen, ekosistemde **Native Lightning Network (L402 Satoshis)** veya **Solana / Multi-EVM** ile aynı anda ödeme kabul eden sağlayıcı yoktur!
 
 ---
 
-## 2. "Kopyacı Olmama" ve Stratejik Fark Yaratma İlkemiz
+## 2. Tamamlanan Geliştirmeler ve Doğrulamalar (7 Kasım 2026 İtibarıyla %100 Hazır)
 
-Piyasadaki `2s.io` gibi aktörleri taklit etmemek ve SovRoute'u benzersiz kılmak için şu 3 temel savunma hattı kurulmuştur:
-
-1. **🛡️ 0-Conf RBF Dolandırıcılık Kalkanı (`/v1/chain/btc/rbf-shield/:txid`):**
-   * 152 uç noktanın hiçbirinde **sıfır-onay (0-conf) güvenlik oraklı YOKTUR.**
-   * Bir AI ajanı veya ticaret botu sıfır onaylı bir Bitcoin ödemesi aldığında, bu işlemin **BIP-125 Replace-By-Fee** ile çift harcanıp harcanamayacağını anında tespit eden sektördeki **TEK ORAKIL** biziz.
-2. **⚡ Derin Mempool Entropisi & Tıkanıklık Motoru (`/v1/chain/btc/mempool`):**
-   * Sıradan bir işlem sayısı yerine; 63.000+ bekleyen işlem, 33 MB blok yığılması, 22M+ satoshi madenci ücret havuzu ve dinamik **"Ağ Sıkışıklık Derecesi (LOW / MEDIUM / CRITICAL)"** sunulmaktadır.
-3. **⚡ Çift Raylı Ödeme (Native L402 Lightning + Base USDC):**
-   * Yalnızca Base USDC'ye sıkışmış rakiplerin aksine, Alby Hub ve Lightning cüzdanı olan tüm AI ajanlarına **L402 satoshi ile ödeme yapabilme özgürlüğü** sunarak pazardaki en büyük boşluğu kapatıyoruz.
-4. **🏛️ Bare-Metal Düğüm Gücü:**
-   * Verilerimiz harici API'lerden değil; sunucumuzda çalışan gerçek **Bitcoin Core v31.1 ve Phoenixd** düğümlerinden 0.04 ms in-memory önbellek hızıyla çekilmektedir.
-
----
-
-## 3. Şu Ana Kadar Neler Tamamlandı?
-
-* [x] **Bare-Metal RPC & Önbellek:** Bitcoin Core 31.1 `estimatesmartfee`, `getmempoolentry`, `getmempoolinfo` ve `getblockheader` 0.04ms önbellek ile bağlandı.
-* [x] **Kriptografik L402 Katmanı:** SHA-256 macaroon ve preimage doğrulama middleware'i kuruldu.
-* [x] **Canlı Ağda Gerçek Cüzdan Doğrulaması:** Mobil Lightning cüzdanından 4 fatura (20 sats) ödendi; Phoenixd bakiyesi arttı ve `47ed5eebcd...` txid'sinin mempool.space verileriyle %100 örtüştüğü kanıtlandı.
-* [x] **%100 Otonom Ajan İstemcisi:** İnsan müdahalesi olmadan HTTP 402'yi yakalayıp 1.2 saniyede ödeyen ve veriyi alan ajan testi başarıyla çalıştırıldı.
-* [x] **MCP (Model Context Protocol) Sunucusu:** LLM'lerin (Claude, Cursor, Antigravity) doğrudan çağırabileceği 5 araçlık MCP paketi inşa edildi.
-* [x] **Alby NWC (NIP-47) Payer:** Dış ajanların kendi Alby Hub cüzdanlarını bağlayabilmesi için adaptör eklendi.
-* [x] **Base L2 Cross-Rail HTLC:** `CrossRailHTLC.sol` sözleşmesi ve Viem adaptörü yazıldı.
-* [x] **Tüm Testler Yeşil:** 13 otomatik testin 13'ü de hatasız geçti (`npm test`).
-* [x] **Canlı Dağıtım & Yedekleme:** Sunucuda `sovereign-node-engine.service` çalışıyor, yerel proje `Desktop\dev\sovereign-node-engine` dizininde ve sunucudaki **Gitea** Git platformuna push edildi.
-* [x] **Mevcut SovRoute Güvencesi:** Mevcut TaskFuel uçlarına (`sovroute.com/v1/chain/btc/...`) **sıfır müdahale** yapıldı, kesintisiz çalışmaya devam ediyor.
+* [x] **Mevcut `sovroute.com` Güvencesi:** TaskFuel'de aktif olan 3 ana `sovroute.com` ucuna (`/v1/chain/btc/fees`, `/v1/chain/btc/tip`, `/v1/chain/lightning/stats`) **sıfır müdahale** yapıldı; kesintisiz çalışıyor.
+* [x] **Bare-Metal RPC & Önbellek (`sovereign-bitcoind` v31.1):** `estimatesmartfee`, `getmempoolentry`, `getmempoolinfo`, `getrawmempool`, `gettxout` (UTXO onay kontrolü) ve `getblockchaininfo` `0.04ms` in-memory önbellek ile bağlandı.
+* [x] **Ödeme Öncesi TXID Doğrulaması:** `/v1/chain/btc/rbf-shield/:txid` ucunda `validateTxidParam` middleware'i L402/x402 ödeme katmanının **önüne** alındı; hatalı `txid` gönderildiğinde fatura kesilmeden doğrudan `400 Bad Request` dönüyor.
+* [x] **UTXO Onay Tespiti & Ata Zinciri (Ancestor) Analizi:** `checkRbfShield` artık mempool'daki aktif işlemlerde ata paketi ücret oranını (`ancestorFeeRate`) ve zincir derinliğini (`ancestorCount`) hesaplıyor; mempool'da olmayan işlemlerde ise doğrudan UTXO setini (`gettxout`) sorgulayarak blokta onaylanmış işlemleri `SAFE` (`CONFIRMED: X confirmations`) olarak raporluyor.
+* [x] **Çift Raylı (Dual-Rail: L402 Lightning + x402 Base USDC) Prodüksiyon Uçları:**
+  * `GET https://node.sovroute.com/v1/chain/btc/rbf-shield/:txid` (`5 sats` L402 / `$0.005` Base USDC)
+  * `GET https://node.sovroute.com/v1/chain/btc/mempool` (`2 sats` L402 / `$0.002` Base USDC)
+  * `GET https://node.sovroute.com/v1/chain/btc/fees` (`1 sat` L402 / `$0.001` Base USDC)
+  * `GET https://node.sovroute.com/v1/chain/btc/block` (`1 sat` L402 / `$0.001` Base USDC)
+* [x] **Keşif ve Entegrasyon Şemaları (`node.sovroute.com`):**
+  * `https://node.sovroute.com/llms.txt` (`200 OK`)
+  * `https://node.sovroute.com/openapi.json` (`200 OK` — TaskFuel `x-payment-info` uyumlu OpenAPI 3.1.0)
+  * `https://node.sovroute.com/mcp-config.json` (`200 OK` — Tek tıkla Claude / Cursor MCP yapılandırması)
+* [x] **İzole 4 Raylı (Quad-Rail / Omni-Rail) Ağ Geçidi (`/v1/omni/*`):**
+  * TaskFuel prodüksiyon uçlarından tamamen izole olarak aynı HTTP 402 yanıtında **1. Lightning (`L402`)**, **2. Base (`USDC`)**, **3. Solana (`SPL USDC` & `Native SOL`)** ve **4. Multi-EVM (`Arbitrum`, `Optimism`, `Polygon`, `Ethereum Mainnet`)** kabul eden `/v1/omni/rails`, `/v1/omni/btc/mempool`, `/v1/omni/btc/rbf-shield/:txid` ve `/v1/omni/btc/fees` uçları canlıya alındı ve Replay korumasıyla doğrulandı.
+* [x] **Tüm Testler Yeşil:** 17 otomatik testin 17'si de (`tests/live-node.test.ts`, `tests/omni-rail.test.ts`, `tests/l402.test.ts`, `tests/htlc.test.ts`, `tests/mcp-server.test.ts`) canlı düğüm üzerinde %100 başarıyla geçti.
 
 ---
 
-## 4. 📅 YARIN YAPILACAKLAR LİSTESİ (ACTIONABLE TO-DO)
+## 3. 📅 PAZARTESİ EYLEM PLANI: TaskFuel / Moritz Kaminski İletişimi
 
-Yarınki oturumda atılacak adımlar sırasıyla şunlardır:
+### İngilizce Mesaj Taslağı (İki Aşamalı Kanca ile):
 
-### Adım 1: Yeni Uç Noktaların SovRoute Ağ Geçidine Eklenmesi (HAZIR - PASİFE ALINDI)
-* **Alt Alan Adı:** `node.sovroute.com` başarıyla bağlandı, Let's Encrypt SSL sertifikası alındı.
-* **Tasarım:** `sovroute.com` ile %100 aynı görsel DNA (3D logo, cetvel ızgarası, koyu lacivert terminal) giydirildi.
-* **Gece Güvenliği (Pasif Mod):** Kullanıcı talebiyle gece açık kalmaması için Traefik router'ı pasife alındı (`/etc/dokploy/traefik/dynamic/node-sovroute.yml.disabled`).
-* **Yarın Açma Komutu (Tek Tık):**
+> **Subject / DM:** SovRoute update: 0-Conf RBF Fraud Shield + Native L402 Lightning & x402 Dual-Rail on `node.sovroute.com` ⚡
+>
+> Hey Moritz! Hope you had a great weekend.
+>
+> While running my own autonomous agents against SovRoute, I noticed two things we really needed in production:
+> 1. **0-Conf Double-Spend Protection:** Agents accepting or verifying unconfirmed Bitcoin transactions had no HTTP 402 oracle to check if a transaction signals BIP-125 RBF, has conflicting spends in the mempool, or carries a risky unconfirmed ancestor chain.
+> 2. **Dual-Rail Settlement (x402 Base USDC + Native L402 Sats):** Our existing `sovroute.com` endpoints continue running untouched on x402 Base USDC, but paying micro-queries directly in satoshis over Lightning (especially via Alby Hub NWC) felt super fast and natural for Bitcoin-native agents.
+>
+> So we spun up our dedicated bare-metal Bitcoin Core v31.1 & Phoenixd engine at **`https://node.sovroute.com`** supporting **both Base USDC (`x402 v2`) and Lightning (`L402`) simultaneously** on the same 402 response:
+> - `GET https://node.sovroute.com/v1/chain/btc/rbf-shield/{txid}` — **0-Conf BIP-125 RBF Double-Spend Fraud Shield** (`$0.005` Base USDC / `5 sats` L402)
+> - `GET https://node.sovroute.com/v1/chain/btc/mempool` — **Deep Mempool Entropy & Congestion Engine** (`$0.002` Base USDC / `2 sats` L402)
+> - OpenAPI 3.1 Spec (`x-payment-info` ready): https://node.sovroute.com/openapi.json
+> - LLM & MCP Manifest: https://node.sovroute.com/llms.txt
+>
+> All existing `sovroute.com` endpoints in the TaskFuel catalog remain 100% untouched. Would love to add these two new `node.sovroute.com` forensics endpoints to SovRoute's listing on TaskFuel—what do you think?
+>
+> *P.S. We also stood up an isolated Quad-Rail gateway at https://node.sovroute.com/v1/omni/rails that accepts **Lightning (L402) + Base + Solana (SOL/USDC) + Arbitrum/Optimism/Polygon/Ethereum** in a single HTTP 402 response. Whenever you want to explore opening TaskFuel endpoints to Solana and Lightning-native agents, I'd love to test it together!*
+
+---
+
+## 4. Gece / Hafta Sonu Pasif Mod Komutları (İsteğe Bağlı)
+
+* **Pasife Alma (Kapatma):**
+  `ssh root@100.95.119.88 "mv /etc/dokploy/traefik/dynamic/node-sovroute.yml /etc/dokploy/traefik/dynamic/node-sovroute.yml.disabled"`
+* **Aktife Alma (Açma):**
   `ssh root@100.95.119.88 "mv /etc/dokploy/traefik/dynamic/node-sovroute.yml.disabled /etc/dokploy/traefik/dynamic/node-sovroute.yml"`
-
-
-### Adım 2: Çift Rayın (L402 Lightning + x402 Base) Canlıya Alınması
-* Dönen HTTP 402 cevabında hem Base USDC (`x402`) hem de Phoenixd üzerinden anlık üretilen Lightning faturası (`L402`) birlikte sunulacak.
-* Böylece hem EVM ajanları hem Lightning ajanları aynı ucu çağırabilecek.
-
-### Adım 3: `sovroute.com` Vitrini ve `llms.txt` Güncellemesi
-* `https://sovroute.com/llms.txt` dosyasına yeni RBF Güvenlik Kalkanı ve Mempool Entropisi uçları eklenecek.
-* Landing page üzerindeki uç listesine bu iki yeni kabiliyet ve "Dual-Rail (Lightning + Base)" rozeti işlenecek.
-
-### Adım 4: TaskFuel / Alby Ekibine (Moritz Kaminski) Bildirim & İletişim Stratejisi
-* **Stratejik Giriş Tonu (Builder-First / Dogfooding):**
-  Satış odaklı veya kurumsal bir baskı yerine, tamamen samimi bir geliştirici deneyimi üzerinden yaklaşılacak:
-  > *"Selam Moritz! SovRoute tarafında işler harika gidiyor. Kendi AI ajanlarımı çalıştırırken bir şeyi fark ettim: Her mikro-sorguda Base ağında gaz ücreti ve blok beklemek yerine satoshi (Lightning) ile ödemek bana inanılmaz derecede pürüzsüz ve çok daha hesaplı geldi. Ben de doğrudan kendi iş akışım için SovRoute'a yerel bare-metal düğümümüz üzerinden hem Native L402 Lightning (Sats) rayını hem de ajanların 0-onaylı Bitcoin ödemelerinde çift harcama riskini önleyen 0-Conf RBF Kalkanı'nı ekledim. TaskFuel'deki mevcut Base USDC desteğini aynen korudum; ama sats harcamayı seven ajanlar için de bu seçeneği açmış oldum. TaskFuel kataloğundaki SovRoute listesini bu yeni yeteneklerle güncellemek isterim, ne dersin?"*
-* Bu yaklaşım yarınki oturumda son rötuşlarıyla tekrar değerlendirilecek.
-
-### Adım 5: Geliştiriciler İçin Tek Tıkla MCP Dağıtımı
-* Claude Desktop ve Cursor kullanıcılarının SovRoute motorunu tek bir JSON satırıyla araç (tool) olarak ekleyebileceği `mcp_config.json` rehberi yayınlanacak.
-
----
-
-## 5. 🔮 BÜYÜK PROTOKOL VİZYONU: "SUB-LIG" (Universal Base-to-Lightning Bridge)
-
-* **Proje Kod Adı:** `SUB-LIG`
-* **Anlamı:** Submarine / Sub-second / Base Substrate & Lightning Ligature (İki Rayı Kenetleyen Bağ).
-* **Problem:** TaskFuel ve Web3 dünyasındaki 152+ yapay zekâ ucunun tamamı Base L2 (USDC) üzerindedir; Lightning ajanları bu servislere erişememektedir.
-* **Çözüm:** `SUB-LIG` Ters Çevirici / Likidite Köprüsü (Cross-Rail Reverse Proxy):
-  1. Lightning ajanı istek atar (`proxy.sovroute.com/sub-lig/...`).
-  2. Proxy hedef Base ucundan `402 x402 ($0.001 USDC)` yanıtı alır.
-  3. Bunu satoshiye çevirir (1 satoshi maliyet + 1 satoshi SovRoute komisyonu = 2 sats) ve ajana L402 faturası keser.
-  4. Ajan faturayı öder; Proxy kendi Base sıcak kasasından USDC'yi hedefe öder ve gelen veriyi ajana teslim eder.
-* **Kazanç:** Sıfır veri üretimiyle tüm pazardaki 152 ucu anında "Satoshi ile Çalışan" servise dönüştürür ve her işlemden %50-%100 arbitraj komisyonu toplar.
-* **Mevcut Altyapı Hazırlığı:** `CrossRailHTLC.sol` ve `cross-rail-settlement.service.ts` modülleri bu vizyonun çekirdeği olarak hazırlandı. Faz 2'de canlıya alınacak.
-
