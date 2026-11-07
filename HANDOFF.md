@@ -87,3 +87,38 @@ TaskFuel kataloğundaki *"Crypto & Prediction Markets -> Read the Blockchain"* k
   `ssh root@100.95.119.88 "mv /etc/dokploy/traefik/dynamic/node-sovroute.yml /etc/dokploy/traefik/dynamic/node-sovroute.yml.disabled"`
 * **Aktife Alma (Açma):**
   `ssh root@100.95.119.88 "mv /etc/dokploy/traefik/dynamic/node-sovroute.yml.disabled /etc/dokploy/traefik/dynamic/node-sovroute.yml"`
+
+---
+
+## 5. 🔴 YARIN YAPILACAK RED-TEAM & SERT STRES TESTLERİ (`tests/red-team-stress.test.ts` + Canlı Test)
+
+1. **Kriptografik Sahtecilik & Ödeme Atlatma (Payment Bypass / Spoofing):**
+   * **Düşük Tutarlı (Underpayment) İşlem Saldırısı:** Base/Arbitrum'da `300 Gwei` yerine `1 Wei` veya Solana'da `10,000 lamport` yerine `100 lamport` gönderilmiş işlemle geçiş denemesi → `402 Insufficient Transfer Amount`.
+   * **Başka Alıcıya Gönderilmiş Gerçek TX Saldırısı:** Alıcısı bizim kasamız (`0x488c...` / `J7gD...`) olmayan gerçek bir blokzincir işlemiyle geçiş denemesi → Reddedilme doğrulaması.
+   * **Eşzamanlı Çifte Harcama (50x Paralel Race-Condition Replay Attack):** Tek bir geçerli ödeme imzasını `Promise.all` ile aynı milisaniyede 50 paralel istekte gönderme → Sadece **1 adet `200 OK`**, **49 adet `402 Replay Rejected`**.
+   * **Macaroon İmza & Caveat Manipülasyonu:** Base64 macaroon içeriğindeki `price_sats` veya `expires_at` değerini değiştirip aynı imzayla gönderme → `timingSafeEqual` reddi.
+
+2. **`POST /v1/omni/pay-lightning` (SUB-LIG Köprüsü) Kasa Koruma & Canlı Köprü Testi:**
+   * **Limit Aşımı (`> 25 Sats`) & Bozuk Fatura Saldırısı:** `26 sats`, `1000 sats`, tutarsız (amountless) veya Testnet (`lntb...`) faturalarının ödeme öncesi **`400 Bad Request`** ile reddedilmesi.
+   * **Canlı Arbitrum/Base → Lightning Mainnet Ödeme Testi:** Gerçek `5 sats` BOLT-11 faturasını `/omni-test` üzerinden MetaMask (Arbitrum/Base ETH) ile ödeyip Phoenixd düğümümüzün faturayı kapatarak canlı `paymentPreimage` döndürmesi.
+
+3. **`POST /v1/chain/btc/simulate-tx` Fuzzing & Command Injection Testi:**
+   * Aşırı büyük (DoS), tek karakter eksik veya `; rm -rf /` / `$(whoami)` enjeksiyonlu girdilerin SSH/Docker katmanına ulaşmadan **`400 Bad Request`** ile kesilmesi.
+   * Harcanmış/olmayan UTXO kullanan ham işlemin `consensusAllowed: false` (`missing-inputs`) döndürmesi.
+
+4. **Canlı Bitcoin Mempool Uç Durum (Edge-Case) Yakalama Testi:**
+   * Canlı mempool'dan gerçekten `bip125-replaceable: true` sinyali veren bir işlemi otomatik bulup `/rbf-shield/:txid` üzerinde `HIGH_RISK_RBF_ENABLED` sonucunu doğrulama.
+   * Mempool'un en düşük ücretli işlemini bulup `/next-block-xray/:txid` üzerinde `QUEUED_FOR_LATER_BLOCK` kararını doğrulama.
+
+5. **100x Eşzamanlı Ajan Yük & Gecikme (Load Benchmark) Testi:**
+   * 100 paralel istekle `/next-block-xray` ve `/mempool` uçlarına yüklenip `< 2ms` önbellek yanıt süresi ve `%0` hata oranı (`0% 5xx`) doğrulaması.
+
+---
+
+## 6. 📦 TaskFuel'a Sunulacak 5 Benzersiz `node.sovroute.com` Uç Noktası Özeti
+*(Mevcut `sovroute.com` üzerindeki 3 uç noktayla çakışmayan, %100 `x402 Base USDC` + `L402` uyumlu paket)*
+1. `GET /v1/chain/btc/rbf-shield/{txid}` (`$0.005` / `5 sats`) — 0-Conf BIP-125 RBF Double-Spend Fraud Shield
+2. `GET /v1/chain/btc/next-block-xray?txid={txid}` (`$0.003` / `3 sats`) — Live Next-Block Miner Template X-Ray (`getblocktemplate`)
+3. `POST /v1/chain/btc/simulate-tx` (`$0.005` / `5 sats`) — Zero-Broadcast Bitcoin Consensus & Script Dry-Run Simulator (`testmempoolaccept`)
+4. `GET /v1/chain/btc/mempool` (`$0.002` / `2 sats`) — Deep Mempool Entropy & Congestion Engine
+5. `POST /v1/omni/pay-lightning` (`$0.025` / `25 sats`) — SUB-LIG Walletless Cross-Chain Lightning Bridge
