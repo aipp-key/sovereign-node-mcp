@@ -1,6 +1,6 @@
 # 🚀 SOVEREIGN NODE ENGINE — DEVİR TESLİM VE STRATEJİK YOL HARİTASI (HANDOFF)
 
-**Son Güncelleme:** 7 Kasım 2026 (Cumartesi) — Pazartesi Lansmanına Hazır  
+**Son Güncelleme:** 12 Kasım 2026 (Perşembe) — Red-Team Geçti, Canlı Yayın Aktif (`25/25` Test Yeşil)  
 **Yerel Proje Dizini:** `C:\Users\faruk\Desktop\dev\sovereign-node-engine`  
 **Canlı Sunucu Dizini:** `/srv/sovereign-node-engine` (`100.95.119.88:3088` - Tailscale)  
 **Canlı Ağ Geçidi:** `https://node.sovroute.com`  
@@ -113,28 +113,21 @@ TaskFuel kataloğundaki *"Crypto & Prediction Markets -> Read the Blockchain"* k
 
 ---
 
-## 5. 🔴 YARIN YAPILACAK RED-TEAM & SERT STRES TESTLERİ (`tests/red-team-stress.test.ts` + Canlı Test)
+## 5. ✅ 12 KASIM 2026 TAMAMLANAN RED-TEAM TESTLERİ, GÜVENLİK YAMALARI & YARINKİ ADIMLAR
 
-1. **Kriptografik Sahtecilik & Ödeme Atlatma (Payment Bypass / Spoofing):**
-   * **Düşük Tutarlı (Underpayment) İşlem Saldırısı:** Base/Arbitrum'da `300 Gwei` yerine `1 Wei` veya Solana'da `10,000 lamport` yerine `100 lamport` gönderilmiş işlemle geçiş denemesi → `402 Insufficient Transfer Amount`.
-   * **Başka Alıcıya Gönderilmiş Gerçek TX Saldırısı:** Alıcısı bizim kasamız (`0x488c...` / `J7gD...`) olmayan gerçek bir blokzincir işlemiyle geçiş denemesi → Reddedilme doğrulaması.
-   * **Eşzamanlı Çifte Harcama (50x Paralel Race-Condition Replay Attack):** Tek bir geçerli ödeme imzasını `Promise.all` ile aynı milisaniyede 50 paralel istekte gönderme → Sadece **1 adet `200 OK`**, **49 adet `402 Replay Rejected`**.
-   * **Macaroon İmza & Caveat Manipülasyonu:** Base64 macaroon içeriğindeki `price_sats` veya `expires_at` değerini değiştirip aynı imzayla gönderme → `timingSafeEqual` reddi.
+### Tamamlananlar (`e927e45` — `origin/main` güncel & `node.sovroute.com` canlı):
+* [x] **Red-Team & Sert Stres Test Paketi (`tests/red-team-stress.test.ts` — 6/6, Toplam 25/25 Yeşil):**
+  * **1A Underpayment & Wrong Recipient:** Base/Arbitrum/Solana/x402 eksik tutar ve yanlış alıcı saldırıları `402` ile reddedildi.
+  * **1B 50x Paralel On-Chain Replay:** Gerçek Base Mainnet TX (`0x8d31cacd...`) ile 50 paralel istek → **1x `200 OK`, 49x `402 Replay Rejected`**.
+  * **1C Macaroon HMAC & Price Downgrade:** `verifyL402Macaroon` (`timingSafeEqual` + `expires_at` + endpoint `price_sats` kontrolü) ile caveat manipülasyonu ve 1 sat macaroon'un 5 sat uçta kullanımı engellendi.
+  * **2 SUB-LIG Köprü Koruması:** `> 25 sats`, amountless, testnet (`lntb...`) ve bozuk faturalar ödeme öncesi `400 Bad Request` ile kesildi.
+  * **3 `simulate-tx` Fuzzing & Enjeksiyon:** Shell enjeksiyonu ve bozuk hex girdileri `400` ile kesildi; olmayan UTXO `consensusAllowed: false` (`missing-inputs`, `broadcastedToNetwork: false`) döndü.
+  * **4 & 5 Canlı Mempool & 100x Yük Benchmark:** 100 paralel istek **`97.86ms`** (`0.98ms/istek`, `%0` 5xx).
+* [x] **OpenAPI 3.1 & Canlı Ağ Geçidi:** `openapi-spec.view.ts` ayrıştırıldı; `/v1/chain/btc/next-block-xray` ve `/v1/chain/btc/simulate-tx` eklendi. `live-node.test.ts` 0-fee CPFP parent durumuna göre güncellendi. Sunucuda `sovereign-node-engine.service` yeniden başlatıldı ve `node-sovroute.yml` aktife alındı (`https://node.sovroute.com` → `200 OK`).
 
-2. **`POST /v1/omni/pay-lightning` (SUB-LIG Köprüsü) Kasa Koruma & Canlı Köprü Testi:**
-   * **Limit Aşımı (`> 25 Sats`) & Bozuk Fatura Saldırısı:** `26 sats`, `1000 sats`, tutarsız (amountless) veya Testnet (`lntb...`) faturalarının ödeme öncesi **`400 Bad Request`** ile reddedilmesi.
-   * **Canlı Arbitrum/Base → Lightning Mainnet Ödeme Testi:** Gerçek `5 sats` BOLT-11 faturasını `/omni-test` üzerinden MetaMask (Arbitrum/Base ETH) ile ödeyip Phoenixd düğümümüzün faturayı kapatarak canlı `paymentPreimage` döndürmesi.
-
-3. **`POST /v1/chain/btc/simulate-tx` Fuzzing & Command Injection Testi:**
-   * Aşırı büyük (DoS), tek karakter eksik veya `; rm -rf /` / `$(whoami)` enjeksiyonlu girdilerin SSH/Docker katmanına ulaşmadan **`400 Bad Request`** ile kesilmesi.
-   * Harcanmış/olmayan UTXO kullanan ham işlemin `consensusAllowed: false` (`missing-inputs`) döndürmesi.
-
-4. **Canlı Bitcoin Mempool Uç Durum (Edge-Case) Yakalama Testi:**
-   * Canlı mempool'dan gerçekten `bip125-replaceable: true` sinyali veren bir işlemi otomatik bulup `/rbf-shield/:txid` üzerinde `HIGH_RISK_RBF_ENABLED` sonucunu doğrulama.
-   * Mempool'un en düşük ücretli işlemini bulup `/next-block-xray/:txid` üzerinde `QUEUED_FOR_LATER_BLOCK` kararını doğrulama.
-
-5. **100x Eşzamanlı Ajan Yük & Gecikme (Load Benchmark) Testi:**
-   * 100 paralel istekle `/next-block-xray` ve `/mempool` uçlarına yüklenip `< 2ms` önbellek yanıt süresi ve `%0` hata oranı (`0% 5xx`) doğrulaması.
+### 📅 Yarın (13 Kasım 2026 Cuma) Kalan Adımlar:
+1. **TaskFuel / Moritz Kaminski İletişimi:** Bölüm 3'teki İngilizce mesajın gönderilmesi (tüm uçlar ve `openapi.json` hazır).
+2. *(İsteğe Bağlı)* **Canlı Mainnet SUB-LIG Köprü Testi:** `/omni-test` üzerinden MetaMask (Arbitrum/Base ETH) ile gerçek `5 sats` BOLT-11 faturası ödeyerek Phoenixd `paymentPreimage` dönüşünü canlı doğrulama.
 
 ---
 
