@@ -4,4 +4,5 @@ export interface ILightningGateway {
   createL402Invoice(priceSats: number, memo: string): Promise<L402Challenge>;
   verifyPreimage(paymentHash: string, preimage: string): Promise<L402VerificationResult>;
   isInvoiceSettled(paymentHash: string): Promise<boolean>;
+  verifyMacaroon?(macaroon: string, expectedPriceSats?: number): { valid: boolean; reason?: string };
 }

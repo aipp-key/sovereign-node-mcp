@@ -57,27 +57,50 @@ TaskFuel kataloğundaki *"Crypto & Prediction Markets -> Read the Blockchain"* k
 
 ---
 
-## 3. 📅 PAZARTESİ EYLEM PLANI: TaskFuel / Moritz Kaminski İletişimi
+## 3. 📅 12 KASIM 2026 (PERŞEMBE) EYLEM PLANI: TaskFuel / Moritz Kaminski İletişimi
 
-### İngilizce Mesaj Taslağı (İki Aşamalı Kanca ile):
+### 🎯 Kritik Stratejik Kararlar (9 Kasım 2026):
+1. **Sıfır Çakışma İlkesi (Zero-Conflict):** Mevcut `sovroute.com` uçları (`/v1/chain/btc/fees` ve `/v1/chain/btc/tip`) TaskFuel kataloğunda zaten aktiftir. Bu nedenle `node.sovroute.com` tarafındaki `/fees` veya `/block` uçları kesinlikle teklife konulmayacak, çakışma riski sıfıra indirilecektir.
+2. **Yalnızca 3 Adli Bilişim (Forensics & Simulation) Ucu Sunulacak:**
+   - `GET /v1/chain/btc/rbf-shield/{txid}` (0-Conf BIP-125 RBF Double-Spend Fraud Shield)
+   - `GET /v1/chain/btc/next-block-xray` (Live Miner Candidate Block Template X-Ray & Queue Rank)
+   - `POST /v1/chain/btc/simulate-tx` (Zero-Broadcast Bitcoin Core v31.1 Consensus Simulator)
+3. **Sadece Dual-Rail (Base USDC + Native L402 Sats):** Omni-Rail (Solana, Multi-EVM) pazar yeri karmaşıklığı yaratmamak ve SovRoute'un ana Bitcoin/Lightning uzmanlık kimliğini sulandırmamak amacıyla bu teklife dahil edilmemiştir; iç altyapıda hazır tutulmaktadır.
+4. **Pazar Üstünlüğü Tespiti:** TaskFuel'deki rakipler (Glassnode, 2s.io, Otto AI, BlockRun, OneSource) 9 Kasım 2026'da canlı olarak sorgulanmış ve ekosistemde **Lightning Network (L402 / Satoshis) desteğinin %0 olduğu** doğrulanmıştır. `node.sovroute.com` bu alanda ilktir.
 
-> **Subject / DM:** SovRoute update: 0-Conf RBF Fraud Shield + Native L402 Lightning & x402 Dual-Rail on `node.sovroute.com` ⚡
+### ✉️ Perşembe Günü Gönderilecek İngilizce Mesaj:
+
+> **Subject:** Re: SovRoute & TaskFuel — Following up from X / Endpoints
 >
-> Hey Moritz! Hope you had a great weekend.
+> Hi Moritz,
 >
-> While running my own autonomous agents against SovRoute, I noticed two things we really needed in production:
-> 1. **0-Conf Double-Spend Protection:** Agents accepting or verifying unconfirmed Bitcoin transactions had no HTTP 402 oracle to check if a transaction signals BIP-125 RBF, has conflicting spends in the mempool, or carries a risky unconfirmed ancestor chain.
-> 2. **Dual-Rail Settlement (x402 Base USDC + Native L402 Sats):** Our existing `sovroute.com` endpoints continue running untouched on x402 Base USDC, but paying micro-queries directly in satoshis over Lightning (especially via Alby Hub NWC) felt super fast and natural for Bitcoin-native agents.
+> Glad you liked the integration!
 >
-> So we spun up our dedicated bare-metal Bitcoin Core v31.1 & Phoenixd engine at **`https://node.sovroute.com`** supporting **both Base USDC (`x402 v2`) and Lightning (`L402`) simultaneously** on the same 402 response:
-> - `GET https://node.sovroute.com/v1/chain/btc/rbf-shield/{txid}` — **0-Conf BIP-125 RBF Double-Spend Fraud Shield** (`$0.005` Base USDC / `5 sats` L402)
-> - `GET https://node.sovroute.com/v1/chain/btc/mempool` — **Deep Mempool Entropy & Congestion Engine** (`$0.002` Base USDC / `2 sats` L402)
-> - OpenAPI 3.1 Spec (`x-payment-info` ready): https://node.sovroute.com/openapi.json
-> - LLM & MCP Manifest: https://node.sovroute.com/llms.txt
+> While running our own autonomous agent workloads against SovRoute, we identified two critical blind spots for agents interacting with Bitcoin:
+> 1. **0-Conf Double-Spend Exposure:** Autonomous agents accepting or routing unconfirmed transactions had no real-time oracle to detect BIP-125 RBF replacements, mempool fee snipes, or risky unconfirmed ancestor chains.
+> 2. **The Missing Lightning Settlement Rail:** Even though AI agents operate on sub-cent micro-queries, virtually every provider in the space settles strictly in Base USDC. Paying 1–5 sats directly over Lightning felt vastly more native for Bitcoin workflows.
 >
-> All existing `sovroute.com` endpoints in the TaskFuel catalog remain 100% untouched. Would love to add these two new `node.sovroute.com` forensics endpoints to SovRoute's listing on TaskFuel—what do you think?
+> To solve this, we spun up our dedicated bare-metal Bitcoin Core v31.1 engine at **`https://node.sovroute.com`** featuring **Dual-Rail settlement (Base USDC x402 + Native Lightning L402 Satoshis)** on the very same 402 challenge:
 >
-> *P.S. We also stood up an isolated Quad-Rail gateway at https://node.sovroute.com/v1/omni/rails that accepts **Lightning (L402) + Base + Solana (SOL/USDC) + Arbitrum/Optimism/Polygon/Ethereum** in a single HTTP 402 response. Whenever you want to explore opening TaskFuel endpoints to Solana and Lightning-native agents, I'd love to test it together!*
+> • `GET https://node.sovroute.com/v1/chain/btc/rbf-shield/{txid}`
+>   0-Conf BIP-125 RBF Double-Spend Fraud Shield ($0.005 Base USDC / 5 sats L402)
+>
+> • `GET https://node.sovroute.com/v1/chain/btc/next-block-xray`
+>   Live candidate block template inspector (rank-in-block & cutoff fee rate via getblocktemplate)
+>
+> • `POST https://node.sovroute.com/v1/chain/btc/simulate-tx`
+>   Zero-broadcast Bitcoin Core v31.1 consensus & script dry-run simulator
+>
+> • OpenAPI 3.1 Spec (x-payment-info compliant): https://node.sovroute.com/openapi.json
+> • LLM & Agent Manifest: https://node.sovroute.com/llms.txt
+>
+> Our existing `sovroute.com` endpoints (`/fees` and `/tip`) in the TaskFuel catalog remain 100% untouched. We would love to add these 3 forensics endpoints to SovRoute's listing on TaskFuel so agents can settle via either Base USDC or native Sats.
+>
+> What do you think?
+>
+> Best regards,
+> Faruk
+> SovRoute Core
 
 ---
 

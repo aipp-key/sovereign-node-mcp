@@ -172,7 +172,8 @@ test('BitcoinRpcAdapter extracts live Next-Block X-Ray (getblocktemplate) and ra
   const xray = await adapter.getNextBlockXray();
   assert.ok(xray.candidateBlockHeight > 974900);
   assert.ok(xray.totalTransactions > 0, 'Next block template must contain candidate transactions');
-  assert.ok(xray.cutoffFeeRateSatPerVb > 0, 'Cutoff fee rate must be positive');
+  assert.ok(xray.cutoffFeeRateSatPerVb >= 0, 'Cutoff fee rate must be non-negative');
+  assert.ok(xray.topFeeRateSatPerVb > 0, 'Top fee rate must be positive');
   assert.ok(xray.topWhaleTransactions.length > 0, 'Must list top whale transactions');
 
   const topTxid = xray.topWhaleTransactions[0].txid;

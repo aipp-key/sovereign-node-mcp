@@ -95,6 +95,7 @@ export const OMNI_RAIL_CORS_HEADERS: Record<string, string> = {
 };
 
 const consumedProofSet = new Set<string>();
+const inFlightProofSet = new Set<string>();
 
 function decodeJsonHeader(rawHeader: string | undefined): any | null {
   if (!rawHeader || typeof rawHeader !== 'string') return null;
@@ -248,7 +249,10 @@ export function createOmniRailMiddleware(
     // =========================================================================
     const authHeader = req.header('Authorization');
     if (authHeader && authHeader.startsWith('L402 ')) {
-      const verification = await l402Service.verifyAuthorizationHeader(authHeader);
+      const verification = await l402Service.verifyAuthorizationHeader(
+        authHeader,
+        options.priceSats
+      );
       if (verification.isValid) {
         (req as any).l402 = verification;
         (req as any).paymentRail = 'RAIL-1:L402-LIGHTNING-SATS';
@@ -290,7 +294,7 @@ export function createOmniRailMiddleware(
       }
 
       const replayKey = `solana:${signature}`;
-      if (consumedProofSet.has(replayKey)) {
+      if (consumedProofSet.has(replayKey) || inFlightProofSet.has(replayKey)) {
         return res.status(402).json({
           error: 'Solana Replay Rejected',
           details: 'This Solana payment signature has already been consumed.',
@@ -300,20 +304,25 @@ export function createOmniRailMiddleware(
 
       // If verifyOnChain is true (live wallet mode), verify directly against Solana Mainnet RPC
       if (payload.verifyOnChain === true) {
-        const onChain = await verifySolanaOnChainTx(signature, SOLANA_PAY_TO_ADDRESS);
-        if (!onChain.valid) {
-          return res.status(402).json({
-            error: 'Solana On-Chain RPC Verification Failed',
-            details: onChain.reason,
-            rail: 'RAIL-3:SOLANA',
-          });
+        inFlightProofSet.add(replayKey);
+        try {
+          const onChain = await verifySolanaOnChainTx(signature, SOLANA_PAY_TO_ADDRESS);
+          if (!onChain.valid) {
+            return res.status(402).json({
+              error: 'Solana On-Chain RPC Verification Failed',
+              details: onChain.reason,
+              rail: 'RAIL-3:SOLANA',
+            });
+          }
+          consumedProofSet.add(replayKey);
+          const railLabel = 'RAIL-3:SOLANA-MAINNET-ONCHAIN-VERIFIED';
+          res.setHeader('X-Payment-Rail', railLabel);
+          (req as any).paymentRail = railLabel;
+          (req as any).onChainReceipt = { txSignature: signature, slot: onChain.slot };
+          return next();
+        } finally {
+          inFlightProofSet.delete(replayKey);
         }
-        consumedProofSet.add(replayKey);
-        const railLabel = 'RAIL-3:SOLANA-MAINNET-ONCHAIN-VERIFIED';
-        res.setHeader('X-Payment-Rail', railLabel);
-        (req as any).paymentRail = railLabel;
-        (req as any).onChainReceipt = { txSignature: signature, slot: onChain.slot };
-        return next();
       }
 
       const isNativeSol = asset === 'SOL' || asset === SOLANA_NATIVE_MINT;
@@ -368,7 +377,7 @@ export function createOmniRailMiddleware(
       }
 
       const replayKey = `${networkId}:${signature}`;
-      if (consumedProofSet.has(replayKey)) {
+      if (consumedProofSet.has(replayKey) || inFlightProofSet.has(replayKey)) {
         return res.status(402).json({
           error: 'EVM Replay Rejected',
           details: 'This EVM payment proof has already been consumed.',
@@ -377,31 +386,36 @@ export function createOmniRailMiddleware(
 
       // Live On-Chain RPC Verification Mode (when real MetaMask txHash is submitted)
       if (parsedEvm.verifyOnChain === true && /^0x[0-9a-fA-F]{64}$/.test(signature)) {
-        const minWei = BigInt(options.priceEthWei);
-        const onChain = await verifyEvmOnChainTx(
-          chainConfig.rpcUrl,
-          signature,
-          BASE_PAY_TO_ADDRESS,
-          minWei
-        );
-        if (!onChain.valid) {
-          return res.status(402).json({
-            error: 'EVM On-Chain RPC Verification Failed',
-            details: onChain.reason,
-            network: chainConfig.name,
-          });
+        inFlightProofSet.add(replayKey);
+        try {
+          const minWei = BigInt(options.priceEthWei);
+          const onChain = await verifyEvmOnChainTx(
+            chainConfig.rpcUrl,
+            signature,
+            BASE_PAY_TO_ADDRESS,
+            minWei
+          );
+          if (!onChain.valid) {
+            return res.status(402).json({
+              error: 'EVM On-Chain RPC Verification Failed',
+              details: onChain.reason,
+              network: chainConfig.name,
+            });
+          }
+          consumedProofSet.add(replayKey);
+          const railLabel = `RAIL-4:EVM-${chainConfig.name.toUpperCase().replace(/\s+/g, '-')}-ONCHAIN-VERIFIED`;
+          res.setHeader('X-Payment-Rail', railLabel);
+          (req as any).paymentRail = railLabel;
+          (req as any).onChainReceipt = {
+            txHash: signature,
+            from: onChain.from,
+            valueWei: onChain.valueWei,
+            blockNumber: onChain.blockNumber,
+          };
+          return next();
+        } finally {
+          inFlightProofSet.delete(replayKey);
         }
-        consumedProofSet.add(replayKey);
-        const railLabel = `RAIL-4:EVM-${chainConfig.name.toUpperCase().replace(/\s+/g, '-')}-ONCHAIN-VERIFIED`;
-        res.setHeader('X-Payment-Rail', railLabel);
-        (req as any).paymentRail = railLabel;
-        (req as any).onChainReceipt = {
-          txHash: signature,
-          from: onChain.from,
-          valueWei: onChain.valueWei,
-          blockNumber: onChain.blockNumber,
-        };
-        return next();
       }
 
       if (

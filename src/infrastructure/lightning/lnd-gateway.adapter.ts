@@ -2,6 +2,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { createHmac, createHash } from 'crypto';
 import { ILightningGateway } from '../../application/interfaces/lightning.interface.js';
+import { verifyL402Macaroon } from './macaroon.helper.js';
 import {
   L402Challenge,
   L402VerificationResult,
@@ -63,6 +64,10 @@ export class LndGatewayAdapter implements ILightningGateway {
     };
 
     return L402ChallengeSchema.parse(challengePayload);
+  }
+
+  verifyMacaroon(macaroon: string, expectedPriceSats?: number) {
+    return verifyL402Macaroon(macaroon, this.config.macaroonSecretKey, expectedPriceSats);
   }
 
   /**

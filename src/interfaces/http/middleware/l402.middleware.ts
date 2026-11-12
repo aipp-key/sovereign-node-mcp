@@ -100,7 +100,10 @@ export function createL402Middleware(
     const authHeader = req.header('Authorization');
     if (authHeader && authHeader.startsWith('L402 ')) {
       try {
-        const verification = await l402Service.verifyAuthorizationHeader(authHeader);
+        const verification = await l402Service.verifyAuthorizationHeader(
+          authHeader,
+          options.priceSats
+        );
         if (verification.isValid) {
           (req as any).l402 = verification;
           (req as any).paymentRail = 'L402-LIGHTNING';

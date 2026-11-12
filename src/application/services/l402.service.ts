@@ -27,7 +27,10 @@ export class L402Service {
    * 3. Compute SHA-256(preimage) and verify against expected paymentHash
    * 4. Verify settlement state through the node gateway
    */
-  async verifyAuthorizationHeader(authHeader: string | undefined): Promise<L402VerificationResult> {
+  async verifyAuthorizationHeader(
+    authHeader: string | undefined,
+    expectedPriceSats?: number
+  ): Promise<L402VerificationResult> {
     if (!authHeader || !authHeader.startsWith('L402 ')) {
       return {
         isValid: false,
@@ -84,6 +87,17 @@ export class L402Service {
         isValid: false,
         errorReason: 'Macaroon does not contain a valid payment_hash caveat.',
       };
+    }
+
+    // Verify macaroon HMAC signature, expiry, and price_sats if supported by gateway
+    if (this.lightningGateway.verifyMacaroon) {
+      const macCheck = this.lightningGateway.verifyMacaroon(macaroon, expectedPriceSats);
+      if (!macCheck.valid) {
+        return {
+          isValid: false,
+          errorReason: macCheck.reason || 'Macaroon cryptographic verification failed.',
+        };
+      }
     }
 
     // Verify through the lightning gateway with the expected payment hash

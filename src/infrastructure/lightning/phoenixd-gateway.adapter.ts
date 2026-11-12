@@ -1,5 +1,6 @@
 import { createHmac, createHash } from 'crypto';
 import { ILightningGateway } from '../../application/interfaces/lightning.interface.js';
+import { verifyL402Macaroon } from './macaroon.helper.js';
 import {
   L402Challenge,
   L402VerificationResult,
@@ -59,6 +60,10 @@ export class PhoenixdGatewayAdapter implements ILightningGateway {
       priceSats,
       expiresAt,
     });
+  }
+
+  verifyMacaroon(macaroon: string, expectedPriceSats?: number) {
+    return verifyL402Macaroon(macaroon, this.config.macaroonSecretKey, expectedPriceSats);
   }
 
   async verifyPreimage(paymentHash: string, preimage: string): Promise<L402VerificationResult> {
