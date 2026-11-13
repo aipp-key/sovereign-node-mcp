@@ -3,7 +3,7 @@ import { L402Service } from '../../../application/services/l402.service.js';
 import {
   BASE_PAY_TO_ADDRESS,
   BASE_USDC_CONTRACT,
-  X402_FACILITATOR_URL,
+  verifyAndSettleX402Payment,
 } from './l402.middleware.js';
 
 export const SOLANA_PAY_TO_ADDRESS =
@@ -450,15 +450,35 @@ export function createOmniRailMiddleware(
         });
       }
 
-      consumedProofSet.add(replayKey);
-
       if (networkId === 'eip155:8453' && !isNativeAsset) {
-        fetch(`${X402_FACILITATOR_URL}/settle`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ x402Version: 2, paymentPayload: parsedEvm }),
-        }).catch(() => null);
+        const x402Check = await verifyAndSettleX402Payment({
+          parsedX402: parsedEvm,
+          auth,
+          signature,
+          requiredAtomic: requiredBigInt,
+          requirement: {
+            scheme: 'exact',
+            network: 'eip155:8453',
+            amount: requiredBigInt.toString(),
+            maxAmountRequired: requiredBigInt.toString(),
+            resource: fullResourceUrl,
+            description: options.description || options.resourceName,
+            mimeType: 'application/json',
+            asset: BASE_USDC_CONTRACT,
+            payTo: BASE_PAY_TO_ADDRESS,
+            maxTimeoutSeconds: 300,
+            extra: { name: 'USD Coin', version: '2' },
+          },
+        });
+        if (!x402Check.ok) {
+          return res.status(402).json({
+            error: x402Check.error,
+            details: x402Check.details,
+          });
+        }
       }
+
+      consumedProofSet.add(replayKey);
 
       const railLabel =
         networkId === 'eip155:8453' && !isNativeAsset

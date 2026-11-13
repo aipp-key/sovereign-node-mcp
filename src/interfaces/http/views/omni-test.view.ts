@@ -153,6 +153,25 @@ export function renderOmniTestHtml(): string {
         ⚡ 4-Raylı HTTP 402 Yanıtını Getir
       </button>
     </div>
+
+    <!-- X402 BASE USDC: Forensics Endpoints via MetaMask EIP-3009 -->
+    <div class="card">
+      <span class="badge b-evm">x402 Base USDC • MetaMask EIP-3009 (0 Gas)</span>
+      <h3>💵 Base USDC ile 3 Adli Bilişim Ucunu Test Et</h3>
+      <p style="font-size:12.5px;color:var(--muted);">
+        MetaMask üzerinden Base Mainnet USDC (<code>TransferWithAuthorization</code>) imzalayarak <code>rbf-shield</code> ($0.005), <code>next-block-xray</code> ($0.003) ve <code>simulate-tx</code> ($0.005) uçlarını gerçek kripto ile test eder.
+      </p>
+      <div class="addr">USDC Kasa: ${BASE_PAY_TO_ADDRESS}</div>
+      <button class="btn-evm" onclick="payBaseUsdcX402('rbf-shield', '5000')">
+        🛡️ rbf-shield ($0.005 Base USDC)
+      </button>
+      <button class="btn-evm" onclick="payBaseUsdcX402('next-block-xray', '3000')">
+        🩻 next-block-xray ($0.003 Base USDC)
+      </button>
+      <button class="btn-evm" onclick="payBaseUsdcX402('simulate-tx', '5000')">
+        🧪 simulate-tx ($0.005 Base USDC)
+      </button>
+    </div>
   </div>
 
   <div class="status" id="statusBox">Hazır — Yukarıdaki cüzdan butonlarından birine tıklayın.</div>
@@ -288,6 +307,126 @@ export function renderOmniTestHtml(): string {
         httpStatus: res.status,
         response: data,
       });
+    }
+
+    async function payBaseUsdcX402(endpoint, amountAtomic) {
+      if (!window.ethereum) {
+        setStatus('❌ MetaMask bulunamadı! Lütfen bu sayfayı MetaMask kurulu tarayıcıda açın.');
+        return;
+      }
+      try {
+        setStatus('🦊 [1/4] MetaMask hesap izni kontrol ediliyor...');
+        let accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        if (!accounts || !accounts.length) {
+          accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        }
+        const from = accounts[0];
+
+        const currentChain = await window.ethereum.request({ method: 'eth_chainId' });
+        if (currentChain !== '0x2105') {
+          setStatus('🦊 [2/4] Base Mainnet (0x2105) ağına geçiliyor...');
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0x2105' }],
+          });
+        }
+
+        let targetUrl = '/v1/chain/btc/' + endpoint;
+        let fetchOpts = { method: 'GET', headers: {} };
+
+        if (endpoint === 'rbf-shield' || endpoint === 'simulate-tx') {
+          setStatus('📡 Canlı Bitcoin mempool işlemi alınıyor...');
+          const recentRes = await fetch('https://mempool.space/api/mempool/recent');
+          const recent = await recentRes.json();
+          const liveTxid = recent[0].txid;
+          if (endpoint === 'rbf-shield') {
+            targetUrl = '/v1/chain/btc/rbf-shield/' + liveTxid;
+          } else {
+            const hexRes = await fetch('https://mempool.space/api/tx/' + liveTxid + '/hex');
+            const rawTxHex = await hexRes.text();
+            fetchOpts.method = 'POST';
+            fetchOpts.headers['Content-Type'] = 'application/json';
+            fetchOpts.body = JSON.stringify({ rawTxHex });
+          }
+        }
+
+        const randBytes = new Uint8Array(32);
+        crypto.getRandomValues(randBytes);
+        const nonce = '0x' + Array.from(randBytes, b => b.toString(16).padStart(2, '0')).join('');
+        const validBefore = String(Math.floor(Date.now() / 1000) + 300);
+
+        const message = {
+          from,
+          to: PAY_TO_EVM,
+          value: amountAtomic,
+          validAfter: '0',
+          validBefore,
+          nonce,
+        };
+
+        const typedData = {
+          types: {
+            EIP712Domain: [
+              { name: 'name', type: 'string' },
+              { name: 'version', type: 'string' },
+              { name: 'chainId', type: 'uint256' },
+              { name: 'verifyingContract', type: 'address' },
+            ],
+            TransferWithAuthorization: [
+              { name: 'from', type: 'address' },
+              { name: 'to', type: 'address' },
+              { name: 'value', type: 'uint256' },
+              { name: 'validAfter', type: 'uint256' },
+              { name: 'validBefore', type: 'uint256' },
+              { name: 'nonce', type: 'bytes32' },
+            ],
+          },
+          primaryType: 'TransferWithAuthorization',
+          domain: {
+            name: 'USD Coin',
+            version: '2',
+            chainId: 8453,
+            verifyingContract: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+          },
+          message,
+        };
+
+        setStatus('✍️ MetaMask üzerinden $' + (Number(amountAtomic) / 1e6).toFixed(3) + ' Base USDC (EIP-3009) imzalayın...');
+        const signature = await window.ethereum.request({
+          method: 'eth_signTypedData_v4',
+          params: [from, JSON.stringify(typedData)],
+        });
+
+        const x402Payload = {
+          x402Version: 2,
+          scheme: 'exact',
+          network: 'eip155:8453',
+          payer: from,
+          payload: { authorization: message, signature },
+        };
+
+        fetchOpts.headers['Payment-Signature'] = btoa(JSON.stringify(x402Payload));
+        setStatus('🚀 ' + targetUrl + ' ucuna Base USDC imzasıyla istek gönderiliyor...');
+        const res = await fetch(targetUrl, fetchOpts);
+        const data = await res.json();
+
+        if (res.status === 200) {
+          setStatus('🎉 BAŞARILI! Base USDC (x402 EIP-3009) ile ' + endpoint + ' verisi açıldı!');
+        } else {
+          setStatus('⚠️ HTTP ' + res.status + ': ' + (data.details || data.error || 'Hata'));
+        }
+        setOutput({
+          endpoint: targetUrl,
+          payer: from,
+          payTo: PAY_TO_EVM,
+          amountUsdc: '$' + (Number(amountAtomic) / 1e6).toFixed(3),
+          httpStatus: res.status,
+          paymentResponse: res.headers.get('payment-response'),
+          response: data,
+        });
+      } catch (err) {
+        setStatus('❌ Hata: ' + (err.message || String(err)));
+      }
     }
   </script>
 </body>

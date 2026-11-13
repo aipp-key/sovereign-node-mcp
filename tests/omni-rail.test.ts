@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert';
+
+process.env.X402_SKIP_VERIFY = 'true';
 import express from 'express';
 import { createHash } from 'crypto';
 import { NodeTruthService } from '../src/application/services/node-truth.service.js';

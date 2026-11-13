@@ -55,6 +55,15 @@ async function bootstrap() {
   app.use(router);
   app.use(omniRouter);
 
+  // 4. Clean JSON Error Handler (prevents HTML stack-trace leaks on malformed JSON)
+  app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    if (err instanceof SyntaxError && 'body' in err) {
+      res.status(400).json({ error: 'Invalid JSON payload' });
+      return;
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  });
+
   app.listen(PORT, HOST, () => {
     console.log(`[Sovereign Node Engine] Live on http://${HOST}:${PORT}`);
     console.log(`[Sovereign Node Engine] Node Target: ${TAILSCALE_HOST} (Bitcoin Core 31.1 & LND 0.21.3)`);

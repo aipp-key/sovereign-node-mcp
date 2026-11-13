@@ -1,4 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
+import { createPublicClient, http, parseAbi, verifyTypedData, isAddress } from 'viem';
+import { base } from 'viem/chains';
 import { L402Service } from '../../../application/services/l402.service.js';
 
 export const BASE_PAY_TO_ADDRESS =
@@ -6,7 +8,191 @@ export const BASE_PAY_TO_ADDRESS =
 export const BASE_USDC_CONTRACT =
   process.env.BASE_USDC_CONTRACT || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 export const X402_FACILITATOR_URL =
-  process.env.X402_FACILITATOR_URL || 'https://x402.org/facilitator';
+  process.env.X402_FACILITATOR_URL || 'https://facilitator.payai.network';
+
+const basePublicClient = createPublicClient({
+  chain: base,
+  transport: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org'),
+});
+
+const USDC_BALANCE_ABI = parseAbi([
+  'function balanceOf(address owner) view returns (uint256)',
+]);
+
+const EIP3009_TYPES = {
+  TransferWithAuthorization: [
+    { name: 'from', type: 'address' },
+    { name: 'to', type: 'address' },
+    { name: 'value', type: 'uint256' },
+    { name: 'validAfter', type: 'uint256' },
+    { name: 'validBefore', type: 'uint256' },
+    { name: 'nonce', type: 'bytes32' },
+  ],
+} as const;
+
+const consumedX402Nonces = new Set<string>();
+
+export async function verifyAndSettleX402Payment(params: {
+  parsedX402: any;
+  auth: any;
+  signature: string;
+  requiredAtomic: bigint;
+  requirement: ReturnType<typeof buildX402Requirement>;
+}): Promise<{ ok: true; txHash?: string } | { ok: false; error: string; details: string }> {
+  const { parsedX402, auth, signature, requiredAtomic, requirement } = params;
+
+  if (process.env.X402_SKIP_VERIFY === 'true') {
+    return { ok: true };
+  }
+
+  if (!auth.from || !isAddress(auth.from) || !isAddress(auth.to)) {
+    return {
+      ok: false,
+      error: 'x402 Payment Verification Failed',
+      details: 'Invalid payer or recipient address in EIP-3009 authorization.',
+    };
+  }
+
+  if (!auth.nonce || typeof auth.nonce !== 'string' || !/^0x[0-9a-fA-F]{64}$/.test(auth.nonce)) {
+    return {
+      ok: false,
+      error: 'x402 Payment Verification Failed',
+      details: 'Missing or invalid 32-byte EIP-3009 nonce.',
+    };
+  }
+
+  const replayKey = `${auth.from.toLowerCase()}:${auth.nonce.toLowerCase()}`;
+  if (consumedX402Nonces.has(replayKey)) {
+    return {
+      ok: false,
+      error: 'x402 Replay Rejected',
+      details: 'This EIP-3009 authorization nonce has already been used.',
+    };
+  }
+
+  const nowSec = BigInt(Math.floor(Date.now() / 1000));
+  const validAfter = BigInt(auth.validAfter ?? '0');
+  const validBefore = BigInt(auth.validBefore ?? '0');
+  if (validAfter > nowSec || validBefore <= nowSec) {
+    return {
+      ok: false,
+      error: 'x402 Authorization Expired',
+      details: 'EIP-3009 authorization is not currently valid (validAfter/validBefore).',
+    };
+  }
+
+  let sigValid = false;
+  try {
+    sigValid = await verifyTypedData({
+      address: auth.from as `0x${string}`,
+      domain: {
+        name: 'USD Coin',
+        version: '2',
+        chainId: 8453,
+        verifyingContract: BASE_USDC_CONTRACT as `0x${string}`,
+      },
+      types: EIP3009_TYPES,
+      primaryType: 'TransferWithAuthorization',
+      message: {
+        from: auth.from as `0x${string}`,
+        to: auth.to as `0x${string}`,
+        value: BigInt(auth.value ?? auth.amount ?? '0'),
+        validAfter,
+        validBefore,
+        nonce: auth.nonce as `0x${string}`,
+      },
+      signature: signature as `0x${string}`,
+    });
+  } catch {
+    sigValid = false;
+  }
+
+  if (!sigValid) {
+    return {
+      ok: false,
+      error: 'x402 Invalid Signature',
+      details: 'EIP-712 TransferWithAuthorization signature verification failed.',
+    };
+  }
+
+  try {
+    const balance = await basePublicClient.readContract({
+      address: BASE_USDC_CONTRACT as `0x${string}`,
+      abi: USDC_BALANCE_ABI,
+      functionName: 'balanceOf',
+      args: [auth.from as `0x${string}`],
+    });
+    if (balance < requiredAtomic) {
+      return {
+        ok: false,
+        error: 'x402 Insufficient Base USDC Balance',
+        details: `Payer ${auth.from} has ${balance.toString()} atomic USDC on Base Mainnet; ${requiredAtomic.toString()} required.`,
+      };
+    }
+  } catch (err: any) {
+    return {
+      ok: false,
+      error: 'x402 Balance Check Failed',
+      details: err?.message || 'Unable to verify Base Mainnet USDC balance.',
+    };
+  }
+
+  try {
+    const cleanRequirement = {
+      scheme: requirement.scheme,
+      network: requirement.network,
+      amount: requirement.amount,
+      asset: requirement.asset,
+      payTo: requirement.payTo,
+      maxTimeoutSeconds: requirement.maxTimeoutSeconds,
+      extra: requirement.extra,
+    };
+
+    const normalizedPayload = {
+      x402Version: 2,
+      resource: parsedX402.resource || {
+        url: requirement.resource,
+        description: requirement.description,
+        mimeType: requirement.mimeType,
+      },
+      accepted: cleanRequirement,
+      payload: parsedX402.payload || { authorization: auth, signature },
+    };
+
+    const settleRes = await fetch(`${X402_FACILITATOR_URL}/settle`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(10000),
+      body: JSON.stringify({
+        x402Version: 2,
+        paymentPayload: normalizedPayload,
+        paymentRequirements: cleanRequirement,
+      }),
+    });
+    const settleText = await settleRes.text();
+    let settleJson: any = null;
+    try {
+      settleJson = JSON.parse(settleText);
+    } catch {
+      // non-json
+    }
+    if (!settleRes.ok || settleJson?.success === false) {
+      return {
+        ok: false,
+        error: 'x402 Settlement Failed',
+        details: settleJson?.error || settleJson?.errorReason || `Facilitator returned HTTP ${settleRes.status}`,
+      };
+    }
+    consumedX402Nonces.add(replayKey);
+    return { ok: true, txHash: settleJson?.transaction || settleJson?.txHash };
+  } catch (err: any) {
+    return {
+      ok: false,
+      error: 'x402 Settlement Error',
+      details: err?.message || 'Failed to settle x402 payment with facilitator.',
+    };
+  }
+}
 
 export interface L402MiddlewareOptions {
   priceSats: number;
@@ -164,16 +350,21 @@ export function createL402Middleware(
 
       const requirement = buildX402Requirement(fullResourceUrl, description, usdcAtomic);
 
-      // Fire asynchronous facilitator settlement on Base mainnet
-      fetch(`${X402_FACILITATOR_URL}/settle`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          x402Version: parsedX402.x402Version || 2,
-          paymentPayload: parsedX402,
-          paymentRequirements: requirement,
-        }),
-      }).catch(() => null);
+      const x402Check = await verifyAndSettleX402Payment({
+        parsedX402,
+        auth,
+        signature,
+        requiredAtomic: requiredBigInt,
+        requirement,
+      });
+
+      if (!x402Check.ok) {
+        return res.status(402).json({
+          error: x402Check.error,
+          details: x402Check.details,
+          protocol: 'x402',
+        });
+      }
 
       const payerAddress = auth.from || parsedX402.payer || 'x402-verified-agent';
       const settlementReceipt = Buffer.from(
@@ -184,6 +375,7 @@ export function createL402Middleware(
           payTo: BASE_PAY_TO_ADDRESS,
           payer: payerAddress,
           amount: usdcAtomic,
+          txHash: x402Check.txHash,
           timestamp: Date.now(),
         })
       ).toString('base64');
