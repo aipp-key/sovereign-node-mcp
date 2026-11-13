@@ -1,6 +1,6 @@
 # 🚀 SOVEREIGN NODE ENGINE — DEVİR TESLİM VE STRATEJİK YOL HARİTASI (HANDOFF)
 
-**Son Güncelleme:** 12 Kasım 2026 (Perşembe) — Red-Team Geçti, Canlı Yayın Aktif (`25/25` Test Yeşil)  
+**Son Güncelleme:** 13 Kasım 2026 (Cuma) — x402 Mainnet Sertleştirmesi, 30/30 LN & On-Chain MetaMask Base USDC Doğrulandı  
 **Yerel Proje Dizini:** `C:\Users\faruk\Desktop\dev\sovereign-node-engine`  
 **Canlı Sunucu Dizini:** `/srv/sovereign-node-engine` (`100.95.119.88:3088` - Tailscale)  
 **Canlı Ağ Geçidi:** `https://node.sovroute.com`  
@@ -68,31 +68,30 @@ TaskFuel kataloğundaki *"Crypto & Prediction Markets -> Read the Blockchain"* k
 3. **Sadece Dual-Rail (Base USDC + Native L402 Sats):** Omni-Rail (Solana, Multi-EVM) pazar yeri karmaşıklığı yaratmamak ve SovRoute'un ana Bitcoin/Lightning uzmanlık kimliğini sulandırmamak amacıyla bu teklife dahil edilmemiştir; iç altyapıda hazır tutulmaktadır.
 4. **Pazar Üstünlüğü Tespiti:** TaskFuel'deki rakipler (Glassnode, 2s.io, Otto AI, BlockRun, OneSource) 9 Kasım 2026'da canlı olarak sorgulanmış ve ekosistemde **Lightning Network (L402 / Satoshis) desteğinin %0 olduğu** doğrulanmıştır. `node.sovroute.com` bu alanda ilktir.
 
-### ✉️ Perşembe Günü Gönderilecek İngilizce Mesaj:
+### ✉️ Dondurulmuş Nihai İngilizce E-posta (14 Kasım 2026 Gönderilecek):
 
-> **Subject:** Re: SovRoute & TaskFuel — Following up from X / Endpoints
+> **Subject:** Re: SovRoute & TaskFuel — Following up from X / New Forensics Endpoints
 >
 > Hi Moritz,
 >
 > Glad you liked the integration!
 >
 > While running our own autonomous agent workloads against SovRoute, we identified two critical blind spots for agents interacting with Bitcoin:
-> 1. **0-Conf Double-Spend Exposure:** Autonomous agents accepting or routing unconfirmed transactions had no real-time oracle to detect BIP-125 RBF replacements, mempool fee snipes, or risky unconfirmed ancestor chains.
-> 2. **The Missing Lightning Settlement Rail:** Even though AI agents operate on sub-cent micro-queries, virtually every provider in the space settles strictly in Base USDC. Paying 1–5 sats directly over Lightning felt vastly more native for Bitcoin workflows.
 >
-> To solve this, we spun up our dedicated bare-metal Bitcoin Core v31.1 engine at **`https://node.sovroute.com`** featuring **Dual-Rail settlement (Base USDC x402 + Native Lightning L402 Satoshis)** on the very same 402 challenge:
+> 1. **0-Conf Double-Spend & Pre-Broadcast Blindness:** Autonomous agents accepting or routing unconfirmed transactions had no real-time oracle to inspect BIP-125 RBF replacement risk, check the live cutoff fee rate for the next block, or dry-run raw transactions against consensus rules before broadcasting to the P2P network.
+> 2. **The Missing Lightning Settlement Rail:** Even though AI agents operate on sub-cent micro-queries, virtually every provider in the space settles strictly in Base USDC. Paying 3–5 sats directly over Lightning felt vastly more native for Bitcoin workflows.
 >
-> • `GET https://node.sovroute.com/v1/chain/btc/rbf-shield/{txid}`
->   0-Conf BIP-125 RBF Double-Spend Fraud Shield ($0.005 Base USDC / 5 sats L402)
+> To solve this, we spun up our dedicated bare-metal **Bitcoin Core v31.1** engine at **`https://node.sovroute.com`**, featuring **Dual-Rail settlement (Base USDC `x402` + Native Lightning `L402`)** on the very same HTTP 402 challenge:
 >
-> • `GET https://node.sovroute.com/v1/chain/btc/next-block-xray`
->   Live candidate block template inspector (rank-in-block & cutoff fee rate via getblocktemplate)
+> * **`GET https://node.sovroute.com/v1/chain/btc/rbf-shield/{txid}`**
+>   0-Conf BIP-125 RBF Double-Spend Fraud Shield — inspects ancestor chains, conflicting spends, and UTXO confirmation status (`$0.005` Base USDC / `5 sats` L402)
+> * **`GET https://node.sovroute.com/v1/chain/btc/next-block-xray`**
+>   Live miner candidate block template inspector (`getblocktemplate` cutoff fee rate & `?txid=` rank-in-block) (`$0.003` Base USDC / `3 sats` L402)
+> * **`POST https://node.sovroute.com/v1/chain/btc/simulate-tx`**
+>   Zero-broadcast (`broadcast: false`) Bitcoin Core v31.1 consensus & script dry-run simulator (`testmempoolaccept`) (`$0.005` Base USDC / `5 sats` L402)
 >
-> • `POST https://node.sovroute.com/v1/chain/btc/simulate-tx`
->   Zero-broadcast Bitcoin Core v31.1 consensus & script dry-run simulator
->
-> • OpenAPI 3.1 Spec (x-payment-info compliant): https://node.sovroute.com/openapi.json
-> • LLM & Agent Manifest: https://node.sovroute.com/llms.txt
+> * **OpenAPI 3.1 Spec (`x-payment-info` compliant):** `https://node.sovroute.com/openapi.json`
+> * **LLM & Agent Manifest:** `https://node.sovroute.com/llms.txt`
 >
 > Our existing `sovroute.com` endpoints (`/fees` and `/tip`) in the TaskFuel catalog remain 100% untouched. We would love to add these 3 forensics endpoints to SovRoute's listing on TaskFuel so agents can settle via either Base USDC or native Sats.
 >
@@ -125,9 +124,9 @@ TaskFuel kataloğundaki *"Crypto & Prediction Markets -> Read the Blockchain"* k
   * **4 & 5 Canlı Mempool & 100x Yük Benchmark:** 100 paralel istek **`97.86ms`** (`0.98ms/istek`, `%0` 5xx).
 * [x] **OpenAPI 3.1 & Canlı Ağ Geçidi:** `openapi-spec.view.ts` ayrıştırıldı; `/v1/chain/btc/next-block-xray` ve `/v1/chain/btc/simulate-tx` eklendi. `live-node.test.ts` 0-fee CPFP parent durumuna göre güncellendi. Sunucuda `sovereign-node-engine.service` yeniden başlatıldı ve `node-sovroute.yml` aktife alındı (`https://node.sovroute.com` → `200 OK`).
 
-### 📅 Yarın (13 Kasım 2026 Cuma) Kalan Adımlar:
-1. **TaskFuel / Moritz Kaminski İletişimi:** Bölüm 3'teki İngilizce mesajın gönderilmesi (tüm uçlar ve `openapi.json` hazır).
-2. *(İsteğe Bağlı)* **Canlı Mainnet SUB-LIG Köprü Testi:** `/omni-test` üzerinden MetaMask (Arbitrum/Base ETH) ile gerçek `5 sats` BOLT-11 faturası ödeyerek Phoenixd `paymentPreimage` dönüşünü canlı doğrulama.
+### 📅 Yarın (14 Kasım 2026 Cumartesi) Kalan Adımlar (Donduruldu):
+1. **Son Doğrulama Testleri:** `node.sovroute.com` ve `sovroute.com` üzerinde son bir kez `npm test` + hızlı canlı L402/x402 smoke testi çalıştırılacak.
+2. **TaskFuel / Moritz Kaminski E-postası:** Bölüm 3'teki dondurulmuş İngilizce e-posta gönderilecek.
 
 ---
 
