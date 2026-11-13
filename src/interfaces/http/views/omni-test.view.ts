@@ -171,6 +171,12 @@ export function renderOmniTestHtml(): string {
       <button class="btn-evm" onclick="payBaseUsdcX402('simulate-tx', '5000')">
         🧪 simulate-tx ($0.005 Base USDC)
       </button>
+      <button class="btn-evm" style="background:#059669;" onclick="payBaseUsdcX402('https://sovroute.com/v1/chain/btc/fees', '1000')">
+        🌐 sovroute.com/fees ($0.001 Base USDC)
+      </button>
+      <button class="btn-evm" style="background:#059669;" onclick="payBaseUsdcX402('https://sovroute.com/v1/chain/btc/tip', '1000')">
+        🌐 sovroute.com/tip ($0.001 Base USDC)
+      </button>
     </div>
   </div>
 
@@ -331,7 +337,7 @@ export function renderOmniTestHtml(): string {
           });
         }
 
-        let targetUrl = '/v1/chain/btc/' + endpoint;
+        let targetUrl = endpoint.startsWith('https://') ? endpoint : ('/v1/chain/btc/' + endpoint);
         let fetchOpts = { method: 'GET', headers: {} };
 
         if (endpoint === 'rbf-shield' || endpoint === 'simulate-tx') {
