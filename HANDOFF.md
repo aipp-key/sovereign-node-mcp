@@ -141,8 +141,10 @@ TaskFuel kataloğundaki *"Crypto & Prediction Markets -> Read the Blockchain"* k
   * **`AutonomousL402Agent` & Phoenixd/NWC Kapsamı:** `autonomous-agent-client.ts` ödeme sonrası `>= 500` yanıtında `X-Payment-Retry-Voucher` ile otomatik telafi yapacak şekilde güncellendi (`SCENARIO 5`); `PhoenixdGatewayAdapter`, `PhoenixdPayerAdapter` ve `NwcPayerAdapter` doğrudan birim testleriyle doğrulandı (`FINAL-EDGE 3`); `live-node.test.ts` canlı blok kazılma yarışına karşı 1 kez taze örnek yenileme direnci kazandı.
   * **Canlı Doğrulama:** `root@100.95.119.88:/srv/sovereign-node-engine` derlendi, `sovereign-node-engine.service` yeniden başlatıldı; `https://node.sovroute.com/health` (`200 OK`), `openapi.json` (`200`), `llms.txt` (`200`) ve canlı saldırı probları (`400`/`402`, `%0` 5xx) doğrulandı.
 
-### 📅 Bugün (14 Kasım 2026 Cumartesi) Kalan Adım:
-1. **TaskFuel / Moritz Kaminski E-postası:** Bölüm 3'teki dondurulmuş İngilizce e-posta gönderilecek.
+### 📅 Yarınki (15 Kasım 2026 Pazar) Eylem Sırası:
+1. **Gerçek Kripto Canlı Doğrulaması (`node.sovroute.com`):** Kendi gerçek Lightning (`L402` sats) ve Base (`x402` USDC) cüzdanlarımızla uçtan uca canlı Mainnet ödeme testi yapılacak (`/rbf-shield`, `/next-block-xray`, `/simulate-tx` + `/omni-test`).
+2. **TaskFuel / Moritz Kaminski E-postası:** Canlı cüzdan testi %100 sorunsuz geçtikten hemen sonra Bölüm 3'teki dondurulmuş İngilizce e-posta gönderilecek.
+3. **Diğer `x402` / `L402` / `MCP` Pazar Yerlerine Dağıtım:** TaskFuel sonrasında **Satring**, **Coinbase x402 Bazaar** (`/.well-known/x402` dahil), **x402.new**, **PayAI Network**, **Circle Agent Marketplace** ve **MCP dizinleri (`Smithery.ai`, `Glama.ai`)** kayıtları tamamlanacak.
 
 ---
 
