@@ -4,6 +4,7 @@ import { base } from 'viem/chains';
 import { L402Service } from '../../../application/services/l402.service.js';
 import {
   acquireUnfulfilledPaymentRecovery,
+  addBoundedSetEntry,
   attachPostPaymentFailureGuard,
   tryHandleRetryVoucherHeader,
 } from './retry-voucher.helper.js';
@@ -238,7 +239,7 @@ export async function verifyAndSettleX402Payment(params: {
           details: settleJson?.error || settleJson?.errorReason || `Facilitator returned HTTP ${settleRes.status}`,
         };
       }
-      consumedX402Nonces.add(replayKey);
+      addBoundedSetEntry(consumedX402Nonces, replayKey);
       return { ok: true, txHash: settleJson?.transaction || settleJson?.txHash, replayKey };
     } catch (err: any) {
       return {

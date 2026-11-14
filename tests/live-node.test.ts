@@ -191,13 +191,22 @@ test('BitcoinRpcAdapter extracts live Next-Block X-Ray (getblocktemplate) and ra
 });
 
 test('BitcoinRpcAdapter simulates raw transaction consensus (testmempoolaccept) with 0% P2P broadcast', async () => {
-  const adapter = new BitcoinRpcAdapter({
-    tailscaleHost: '100.95.119.88',
-    containerName: 'sovereign-bitcoind',
-  });
+  const mkAdapter = () =>
+    new BitcoinRpcAdapter({
+      tailscaleHost: '100.95.119.88',
+      containerName: 'sovereign-bitcoind',
+    });
 
-  const sample = await adapter.getSampleCandidateRawTxHex();
-  const sim = await adapter.simulateTxConsensus(sample.rawTxHex);
+  let adapter = mkAdapter();
+  let sample = await adapter.getSampleCandidateRawTxHex();
+  let sim = await adapter.simulateTxConsensus(sample.rawTxHex);
+
+  // If a Bitcoin Mainnet block was mined or tx replaced by RBF mid-flight, retry once with a fresh sample
+  if (!sim.consensusAllowed) {
+    adapter = mkAdapter();
+    sample = await adapter.getSampleCandidateRawTxHex();
+    sim = await adapter.simulateTxConsensus(sample.rawTxHex);
+  }
 
   assert.strictEqual(sim.txid, sample.txid);
   assert.strictEqual(sim.consensusAllowed, true);

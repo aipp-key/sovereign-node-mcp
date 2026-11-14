@@ -8,6 +8,7 @@ import {
 } from './l402.middleware.js';
 import {
   acquireUnfulfilledPaymentRecovery,
+  addBoundedSetEntry,
   attachPostPaymentFailureGuard,
   tryHandleRetryVoucherHeader,
 } from './retry-voucher.helper.js';
@@ -278,11 +279,30 @@ export function createOmniRailMiddleware(
         options.priceSats
       );
       if (verification.isValid) {
+        const replayKey = `omni-l402:${(verification.paymentHash || authHeader).toLowerCase()}`;
+        if (inFlightProofSet.has(replayKey)) {
+          return res.status(402).json({
+            error: 'L402 Replay Rejected',
+            details: 'This L402 payment proof is currently in flight.',
+            rail: 'RAIL-1:L402-LIGHTNING',
+          });
+        }
+        if (consumedProofSet.has(replayKey)) {
+          const recovery = acquireUnfulfilledPaymentRecovery(replayKey, options.priceSats);
+          if (!recovery.recovered) {
+            return res.status(402).json({
+              error: 'L402 Replay Rejected',
+              details: 'This L402 payment proof has already been consumed on the Omni-Rail gateway.',
+              rail: 'RAIL-1:L402-LIGHTNING',
+            });
+          }
+        }
+        addBoundedSetEntry(consumedProofSet, replayKey);
         (req as any).l402 = verification;
         (req as any).paymentRail = 'RAIL-1:L402-LIGHTNING-SATS';
         res.setHeader('X-Payment-Rail', 'RAIL-1:L402-LIGHTNING-SATS');
         attachPostPaymentFailureGuard(res, {
-          replayKey: `omni-l402:${verification.paymentHash || authHeader}`,
+          replayKey,
           priceSats: options.priceSats,
           rail: 'RAIL-1:L402-LIGHTNING-SATS',
         });
@@ -380,7 +400,7 @@ export function createOmniRailMiddleware(
               rail: 'RAIL-3:SOLANA',
             });
           }
-          consumedProofSet.add(replayKey);
+          addBoundedSetEntry(consumedProofSet, replayKey);
           const railLabel = 'RAIL-3:SOLANA-MAINNET-ONCHAIN-VERIFIED';
           res.setHeader('X-Payment-Rail', railLabel);
           (req as any).paymentRail = railLabel;
@@ -427,7 +447,7 @@ export function createOmniRailMiddleware(
         });
       }
 
-      consumedProofSet.add(replayKey);
+      addBoundedSetEntry(consumedProofSet, replayKey);
       const railLabel = isNativeSol ? 'RAIL-3:SOLANA-NATIVE-SOL' : 'RAIL-3:SOLANA-SPL-USDC';
       res.setHeader('X-Payment-Rail', railLabel);
       (req as any).paymentRail = railLabel;
@@ -517,7 +537,7 @@ export function createOmniRailMiddleware(
               network: chainConfig.name,
             });
           }
-          consumedProofSet.add(replayKey);
+          addBoundedSetEntry(consumedProofSet, replayKey);
           const railLabel = resolveEvmRailLabel(chainConfig, networkId, isNativeAsset, true);
           res.setHeader('X-Payment-Rail', railLabel);
           (req as any).paymentRail = railLabel;
@@ -610,7 +630,7 @@ export function createOmniRailMiddleware(
         }
       }
 
-      consumedProofSet.add(replayKey);
+      addBoundedSetEntry(consumedProofSet, replayKey);
 
       const railLabel = resolveEvmRailLabel(chainConfig, networkId, isNativeAsset, false);
 

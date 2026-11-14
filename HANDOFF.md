@@ -1,6 +1,6 @@
 # 🚀 SOVEREIGN NODE ENGINE — DEVİR TESLİM VE STRATEJİK YOL HARİTASI (HANDOFF)
 
-**Son Güncelleme:** 14 Kasım 2026 (Cumartesi) — Kapsamlı Senaryo Testleri (Batch 2), EVM Self-Transfer Yaması, AutonomousL402Agent Voucher Desteği & 39/39 Test Yeşil & Canlıya Alındı  
+**Son Güncelleme:** 14 Kasım 2026 (Cumartesi) — Nihai Sınır Durumları, Omni L402 Tek-Kullanım Kilidi, Bellek Budama & 42/42 Test Yeşil & Canlıya Alındı  
 **Yerel Proje Dizini:** `C:\Users\faruk\Desktop\dev\sovereign-node-engine`  
 **Canlı Sunucu Dizini:** `/srv/sovereign-node-engine` (`100.95.119.88:3088` - Tailscale)  
 **Canlı Ağ Geçidi:** `https://node.sovroute.com`  
@@ -134,10 +134,11 @@ TaskFuel kataloğundaki *"Crypto & Prediction Markets -> Read the Blockchain"* k
   * **`BigInt` Crash / Null-JSON / Bozuk `X-Solana-Payment` DoS Koruması:** `parseSafeUintBigInt` ile geçersiz sayısal girdiler ve `null`/`[]`/ilkel JSON başlıkları (bozuk `X-Solana-Payment` ile fatura oluşturma DoS'u dahil) ödeme öncesi/içi `402` ile kesildi (`SEC-ATTACK 2`).
   * **Query & Path Parameter Pollution Koruması:** `node-truth.controller.ts` ve `omni-rail.controller.ts` içinde `?txid[toString]=1`, `?txid[]=...` gibi nesne/dizi enjeksiyonları `400` ile ödeme öncesi engellendi (`SEC-ATTACK 3`).
   * **50x Paralel EIP-3009 & Hibrit Telafi Yarışı + Kademeli 500 Testleri:** `inFlightX402Nonces` kilidiyle 50x EIP-3009 yarışında **1x `200`, 49x `402`**, 50x hibrit (`25x Voucher + 25x Header`) yarışında **1x `200`, 49x `402`**, kademeli 500 (`500 → Voucher 500 → 200 → Replay 402`) ve sahte imza/alıcı/tutar spoofing testleri başarıyla geçti (`SEC-ATTACK 4–7`).
-* [x] **Kapsamlı Senaryo & Edge-Case Sertleştirmesi (Batch 2 — `tests/exhaustive-scenarios.test.ts`, Toplam 39/39 Yeşil):**
+* [x] **Kapsamlı Senaryo & Edge-Case Sertleştirmesi (Batch 2 & 3 — `tests/exhaustive-scenarios.test.ts` + `tests/final-edge-cases.test.ts`, Toplam 42/42 Yeşil):**
   * **EVM On-Chain Self-Transfer Yaması:** `omni-rail.middleware.ts` içindeki `verifyEvmOnChainTx` fonksiyonundan `&& toAddr !== fromAddr` istisnası kaldırılarak saldırganın kendisine ETH gönderip (`to === from`) ödeme bypass'ı yapması kalıcı olarak engellendi (`SCENARIO 3`).
-  * **`AutonomousL402Agent` Otomatik Voucher Telafisi:** `autonomous-agent-client.ts` (ve dolayısıyla `sovereign-node-mcp`) ödeme sonrası `>= 500` yanıtında `X-Payment-Retry-Voucher` başlığını yakalayıp ikinci kez fatura ödemeden otomatik telafi edecek şekilde yükseltildi (`SCENARIO 5`).
-  * **Tam Kapsam Senaryolar (`SCENARIO 1–5`):** Adli bilişim/BOLT-11 parser sınırları (`m/u/n/p`, sub-satoshi, conflict/ancestor/empty template/simulation), tüm `/v1/truth/*` & `/v1/omni/*` rotaları + keşif şemaları + CORS `OPTIONS`, EVM/Solana RPC hata & reverted tx durumları, `/v1/omni/pay-lightning` 500/503 voucher kurtarması ve 5-sat → 3-sat tier downgrade kullanımı doğrulandı.
+  * **`/v1/omni/*` L402 Tek-Kullanım Anti-Replay Kilidi:** `omni-rail.middleware.ts` `RAIL-1` dalına `consumedProofSet` & `inFlightProofSet` tek-kullanım koruması (500 hata telafi kurtarması ile uyumlu) eklenerek `/v1/omni/pay-lightning` köprüsünde aynı L402 başlığının tekrar kullanımı kapatıldı (`FINAL-EDGE 1`).
+  * **Bellek Şişmesi Koruması (`MAX_TRACKED_ENTRIES = 10_000`):** `retry-voucher.helper.ts`, `l402.middleware.ts` ve `omni-rail.middleware.ts` içindeki takip tablolarına süresi dolmuş kayıt budama (`setBoundedUnfulfilledPayment`) ve FIFO sınırlandırma (`addBoundedSetEntry`) eklendi (`FINAL-EDGE 2`).
+  * **`AutonomousL402Agent` & Phoenixd/NWC Kapsamı:** `autonomous-agent-client.ts` ödeme sonrası `>= 500` yanıtında `X-Payment-Retry-Voucher` ile otomatik telafi yapacak şekilde güncellendi (`SCENARIO 5`); `PhoenixdGatewayAdapter`, `PhoenixdPayerAdapter` ve `NwcPayerAdapter` doğrudan birim testleriyle doğrulandı (`FINAL-EDGE 3`); `live-node.test.ts` canlı blok kazılma yarışına karşı 1 kez taze örnek yenileme direnci kazandı.
   * **Canlı Doğrulama:** `root@100.95.119.88:/srv/sovereign-node-engine` derlendi, `sovereign-node-engine.service` yeniden başlatıldı; `https://node.sovroute.com/health` (`200 OK`), `openapi.json` (`200`), `llms.txt` (`200`) ve canlı saldırı probları (`400`/`402`, `%0` 5xx) doğrulandı.
 
 ### 📅 Bugün (14 Kasım 2026 Cumartesi) Kalan Adım:
