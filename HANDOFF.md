@@ -1,6 +1,6 @@
 # 🚀 SOVEREIGN NODE ENGINE — DEVİR TESLİM VE STRATEJİK YOL HARİTASI (HANDOFF)
 
-**Son Güncelleme:** 13 Kasım 2026 (Cuma) — x402 Mainnet Sertleştirmesi, 30/30 LN & On-Chain MetaMask Base USDC Doğrulandı  
+**Son Güncelleme:** 14 Kasım 2026 (Cumartesi) — Ödeme Sonrası 500 Hata Telafisi (Retry Voucher + Idempotent Nonce Recovery), 26/26 Test Yeşil & Canlıya Alındı  
 **Yerel Proje Dizini:** `C:\Users\faruk\Desktop\dev\sovereign-node-engine`  
 **Canlı Sunucu Dizini:** `/srv/sovereign-node-engine` (`100.95.119.88:3088` - Tailscale)  
 **Canlı Ağ Geçidi:** `https://node.sovroute.com`  
@@ -124,9 +124,15 @@ TaskFuel kataloğundaki *"Crypto & Prediction Markets -> Read the Blockchain"* k
   * **4 & 5 Canlı Mempool & 100x Yük Benchmark:** 100 paralel istek **`97.86ms`** (`0.98ms/istek`, `%0` 5xx).
 * [x] **OpenAPI 3.1 & Canlı Ağ Geçidi:** `openapi-spec.view.ts` ayrıştırıldı; `/v1/chain/btc/next-block-xray` ve `/v1/chain/btc/simulate-tx` eklendi. `live-node.test.ts` 0-fee CPFP parent durumuna göre güncellendi. Sunucuda `sovereign-node-engine.service` yeniden başlatıldı ve `node-sovroute.yml` aktife alındı (`https://node.sovroute.com` → `200 OK`).
 
-### 📅 Yarın (14 Kasım 2026 Cumartesi) Kalan Adımlar (Donduruldu):
-1. **Son Doğrulama Testleri:** `node.sovroute.com` ve `sovroute.com` üzerinde son bir kez `npm test` + hızlı canlı L402/x402 smoke testi çalıştırılacak.
-2. **TaskFuel / Moritz Kaminski E-postası:** Bölüm 3'teki dondurulmuş İngilizce e-posta gönderilecek.
+### ✅ 14 Kasım 2026 Tamamlananlar (Ödeme Sonrası 500 Hata Telafisi — Canlıya Alındı):
+* [x] **Ödeme Sonrası Hata Telafisi (`retry-voucher.helper.ts`, `l402.middleware.ts`, `omni-rail.middleware.ts`):**
+  * **Katman 1 (Idempotent Nonce / Proof Recovery):** Ödeme (x402 Base USDC, Solana veya Multi-EVM) doğrulandıktan sonra RPC/sunucu `>= 500` dönerse, `replayKey` 1 saatlik telafi havuzuna (`unfulfilledPayments`) alınır. İstemci aynı ödeme başlığını tekrar gönderdiğinde harici `/settle` tekrar çağrılmadan imza doğrulanıp istek ücretsiz karşılanır ve `200 OK` sonrası kalıcı olarak tüketilir.
+  * **Katman 2 (`X-Payment-Retry-Voucher`):** Ödeme sonrası `>= 500` yanıtlarına HMAC-SHA256 imzalı tek kullanımlık `X-Payment-Retry-Voucher` header'ı ve `paymentProtected: true` / `retryVoucher` JSON alanları eklenir; ajan `<= priceSats` bir uçta tek seferlik telafi hakkını kullanabilir.
+  * **Anti-Double-Dip Kilidi:** Aynı `replayKey` ve `voucherId` tek bir kilit altında birleştirildi (`RED-TEAM 6` doğrulandı; toplam **26/26** test yeşil).
+  * **Canlı Doğrulama:** `root@100.95.119.88:/srv/sovereign-node-engine` derlendi, `sovereign-node-engine.service` yeniden başlatıldı; `https://node.sovroute.com/health` (`200 OK`) ve `/v1/chain/btc/fees` (`402` + `X-Payment-Retry-Voucher` CORS exposure) doğrulandı.
+
+### 📅 Bugün (14 Kasım 2026 Cumartesi) Kalan Adım:
+1. **TaskFuel / Moritz Kaminski E-postası:** Bölüm 3'teki dondurulmuş İngilizce e-posta gönderilecek.
 
 ---
 

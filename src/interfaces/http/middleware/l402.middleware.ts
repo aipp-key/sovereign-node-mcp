@@ -2,6 +2,11 @@ import { Request, Response, NextFunction } from 'express';
 import { createPublicClient, http, parseAbi, verifyTypedData, isAddress } from 'viem';
 import { base } from 'viem/chains';
 import { L402Service } from '../../../application/services/l402.service.js';
+import {
+  acquireUnfulfilledPaymentRecovery,
+  attachPostPaymentFailureGuard,
+  tryHandleRetryVoucherHeader,
+} from './retry-voucher.helper.js';
 
 export const BASE_PAY_TO_ADDRESS =
   process.env.BASE_PAY_TO_ADDRESS || '0x488cbDad29E60d8Bae53FFF4c4252C9711dF9784';
@@ -38,11 +43,17 @@ export async function verifyAndSettleX402Payment(params: {
   signature: string;
   requiredAtomic: bigint;
   requirement: ReturnType<typeof buildX402Requirement>;
-}): Promise<{ ok: true; txHash?: string } | { ok: false; error: string; details: string }> {
-  const { parsedX402, auth, signature, requiredAtomic, requirement } = params;
+  requiredPriceSats?: number;
+}): Promise<
+  | { ok: true; txHash?: string; replayKey: string; recovered?: boolean }
+  | { ok: false; error: string; details: string }
+> {
+  const { parsedX402, auth, signature, requiredAtomic, requirement, requiredPriceSats } = params;
 
   if (process.env.X402_SKIP_VERIFY === 'true') {
-    return { ok: true };
+    const fallbackId = String(auth?.nonce || signature || 'skip');
+    const skipReplayKey = `${String(auth?.from || 'skip').toLowerCase()}:${fallbackId.toLowerCase()}`;
+    return { ok: true, replayKey: skipReplayKey };
   }
 
   if (!auth.from || !isAddress(auth.from) || !isAddress(auth.to)) {
@@ -62,13 +73,6 @@ export async function verifyAndSettleX402Payment(params: {
   }
 
   const replayKey = `${auth.from.toLowerCase()}:${auth.nonce.toLowerCase()}`;
-  if (consumedX402Nonces.has(replayKey)) {
-    return {
-      ok: false,
-      error: 'x402 Replay Rejected',
-      details: 'This EIP-3009 authorization nonce has already been used.',
-    };
-  }
 
   const nowSec = BigInt(Math.floor(Date.now() / 1000));
   const validAfter = BigInt(auth.validAfter ?? '0');
@@ -112,6 +116,23 @@ export async function verifyAndSettleX402Payment(params: {
       ok: false,
       error: 'x402 Invalid Signature',
       details: 'EIP-712 TransferWithAuthorization signature verification failed.',
+    };
+  }
+
+  if (consumedX402Nonces.has(replayKey)) {
+    const recovery = acquireUnfulfilledPaymentRecovery(replayKey, requiredPriceSats ?? 1);
+    if (recovery.recovered) {
+      return {
+        ok: true,
+        txHash: recovery.txHash,
+        replayKey,
+        recovered: true,
+      };
+    }
+    return {
+      ok: false,
+      error: 'x402 Replay Rejected',
+      details: 'This EIP-3009 authorization nonce has already been used.',
     };
   }
 
@@ -184,7 +205,7 @@ export async function verifyAndSettleX402Payment(params: {
       };
     }
     consumedX402Nonces.add(replayKey);
-    return { ok: true, txHash: settleJson?.transaction || settleJson?.txHash };
+    return { ok: true, txHash: settleJson?.transaction || settleJson?.txHash, replayKey };
   } catch (err: any) {
     return {
       ok: false,
@@ -206,9 +227,9 @@ export const DUAL_RAIL_CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers':
-    'Authorization, Content-Type, X-Payment, Payment-Signature, X-Payment-Proof, Payment-Proof',
+    'Authorization, Content-Type, X-Payment, Payment-Signature, X-Payment-Proof, Payment-Proof, X-Payment-Retry-Voucher, X-Retry-Voucher',
   'Access-Control-Expose-Headers':
-    'WWW-Authenticate, Payment-Required, X-Payment-Requirements, Payment-Response, X-Payment-Response',
+    'WWW-Authenticate, Payment-Required, X-Payment-Requirements, Payment-Response, X-Payment-Response, X-Payment-Retry-Voucher',
 };
 
 function parseX402Header(rawHeader: string | undefined): any | null {
@@ -276,6 +297,10 @@ export function createL402Middleware(
       res.setHeader(key, val);
     }
 
+    if (tryHandleRetryVoucherHeader(req, res, next, options.priceSats)) {
+      return;
+    }
+
     const host = req.get('host') || 'node.sovroute.com';
     const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
     const fullResourceUrl = `${proto}://${host}${req.originalUrl || req.path}`;
@@ -293,6 +318,11 @@ export function createL402Middleware(
         if (verification.isValid) {
           (req as any).l402 = verification;
           (req as any).paymentRail = 'L402-LIGHTNING';
+          attachPostPaymentFailureGuard(res, {
+            replayKey: `l402:${verification.paymentHash || authHeader}`,
+            priceSats: options.priceSats,
+            rail: 'L402-LIGHTNING',
+          });
           return next();
         }
 
@@ -356,6 +386,7 @@ export function createL402Middleware(
         signature,
         requiredAtomic: requiredBigInt,
         requirement,
+        requiredPriceSats: options.priceSats,
       });
 
       if (!x402Check.ok) {
@@ -376,6 +407,7 @@ export function createL402Middleware(
           payer: payerAddress,
           amount: usdcAtomic,
           txHash: x402Check.txHash,
+          recovered: x402Check.recovered || undefined,
           timestamp: Date.now(),
         })
       ).toString('base64');
@@ -383,6 +415,12 @@ export function createL402Middleware(
       res.setHeader('Payment-Response', settlementReceipt);
       res.setHeader('X-Payment-Response', settlementReceipt);
       (req as any).paymentRail = 'X402-BASE-USDC';
+      attachPostPaymentFailureGuard(res, {
+        replayKey: x402Check.replayKey,
+        priceSats: options.priceSats,
+        rail: 'X402-BASE-USDC',
+        txHash: x402Check.txHash,
+      });
       return next();
     }
 

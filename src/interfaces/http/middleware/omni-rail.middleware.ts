@@ -5,6 +5,11 @@ import {
   BASE_USDC_CONTRACT,
   verifyAndSettleX402Payment,
 } from './l402.middleware.js';
+import {
+  acquireUnfulfilledPaymentRecovery,
+  attachPostPaymentFailureGuard,
+  tryHandleRetryVoucherHeader,
+} from './retry-voucher.helper.js';
 
 export const SOLANA_PAY_TO_ADDRESS =
   process.env.SOLANA_PAY_TO_ADDRESS || 'J7gD37zihrYnq7gcMU3ywTFP1G5UAU9SfSNpxfQBKFs7';
@@ -89,9 +94,9 @@ export const OMNI_RAIL_CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers':
-    'Authorization, Content-Type, X-Payment, Payment-Signature, X-Solana-Payment, X-EVM-Payment',
+    'Authorization, Content-Type, X-Payment, Payment-Signature, X-Solana-Payment, X-EVM-Payment, X-Payment-Retry-Voucher, X-Retry-Voucher',
   'Access-Control-Expose-Headers':
-    'WWW-Authenticate, Payment-Required, X-Payment-Requirements, Payment-Response, X-Payment-Rail',
+    'WWW-Authenticate, Payment-Required, X-Payment-Requirements, Payment-Response, X-Payment-Rail, X-Payment-Retry-Voucher',
 };
 
 const consumedProofSet = new Set<string>();
@@ -231,6 +236,21 @@ async function verifySolanaOnChainTx(
   }
 }
 
+function resolveEvmRailLabel(
+  chainConfig: EvmChainConfig,
+  networkId: string,
+  isNativeAsset: boolean,
+  isOnChain: boolean
+): string {
+  const upperName = chainConfig.name.toUpperCase().replace(/\s+/g, '-');
+  if (isOnChain) {
+    return `RAIL-4:EVM-${upperName}-ONCHAIN-VERIFIED`;
+  }
+  return networkId === 'eip155:8453' && !isNativeAsset
+    ? 'RAIL-2:BASE-X402-USDC'
+    : `RAIL-4:EVM-${upperName}-${isNativeAsset ? chainConfig.nativeSymbol : 'USDC'}`;
+}
+
 export function createOmniRailMiddleware(
   l402Service: L402Service,
   options: OmniRailOptions
@@ -238,6 +258,10 @@ export function createOmniRailMiddleware(
   return async (req: Request, res: Response, next: NextFunction) => {
     for (const [k, v] of Object.entries(OMNI_RAIL_CORS_HEADERS)) {
       res.setHeader(k, v);
+    }
+
+    if (tryHandleRetryVoucherHeader(req, res, next, options.priceSats)) {
+      return;
     }
 
     const host = req.get('host') || 'node.sovroute.com';
@@ -257,6 +281,11 @@ export function createOmniRailMiddleware(
         (req as any).l402 = verification;
         (req as any).paymentRail = 'RAIL-1:L402-LIGHTNING-SATS';
         res.setHeader('X-Payment-Rail', 'RAIL-1:L402-LIGHTNING-SATS');
+        attachPostPaymentFailureGuard(res, {
+          replayKey: `omni-l402:${verification.paymentHash || authHeader}`,
+          priceSats: options.priceSats,
+          rail: 'RAIL-1:L402-LIGHTNING-SATS',
+        });
         return next();
       }
       return res.status(402).json({
@@ -294,7 +323,33 @@ export function createOmniRailMiddleware(
       }
 
       const replayKey = `solana:${signature}`;
-      if (consumedProofSet.has(replayKey) || inFlightProofSet.has(replayKey)) {
+      if (inFlightProofSet.has(replayKey)) {
+        return res.status(402).json({
+          error: 'Solana Replay Rejected',
+          details: 'This Solana payment signature has already been consumed.',
+          rail: 'RAIL-3:SOLANA',
+        });
+      }
+
+      const isNativeSol = asset === 'SOL' || asset === SOLANA_NATIVE_MINT;
+      if (consumedProofSet.has(replayKey)) {
+        const recovery = acquireUnfulfilledPaymentRecovery(replayKey, options.priceSats);
+        if (recovery.recovered) {
+          const railLabel =
+            payload.verifyOnChain === true
+              ? 'RAIL-3:SOLANA-MAINNET-ONCHAIN-VERIFIED'
+              : isNativeSol
+                ? 'RAIL-3:SOLANA-NATIVE-SOL'
+                : 'RAIL-3:SOLANA-SPL-USDC';
+          res.setHeader('X-Payment-Rail', railLabel);
+          (req as any).paymentRail = railLabel;
+          attachPostPaymentFailureGuard(res, {
+            replayKey,
+            priceSats: options.priceSats,
+            rail: railLabel,
+          });
+          return next();
+        }
         return res.status(402).json({
           error: 'Solana Replay Rejected',
           details: 'This Solana payment signature has already been consumed.',
@@ -319,13 +374,17 @@ export function createOmniRailMiddleware(
           res.setHeader('X-Payment-Rail', railLabel);
           (req as any).paymentRail = railLabel;
           (req as any).onChainReceipt = { txSignature: signature, slot: onChain.slot };
+          attachPostPaymentFailureGuard(res, {
+            replayKey,
+            priceSats: options.priceSats,
+            rail: railLabel,
+          });
           return next();
         } finally {
           inFlightProofSet.delete(replayKey);
         }
       }
 
-      const isNativeSol = asset === 'SOL' || asset === SOLANA_NATIVE_MINT;
       const requiredAtomic = BigInt(isNativeSol ? options.priceSolLamports : options.priceUsdcAtomic);
       let paidAtomic = 0n;
       try {
@@ -346,6 +405,11 @@ export function createOmniRailMiddleware(
       const railLabel = isNativeSol ? 'RAIL-3:SOLANA-NATIVE-SOL' : 'RAIL-3:SOLANA-SPL-USDC';
       res.setHeader('X-Payment-Rail', railLabel);
       (req as any).paymentRail = railLabel;
+      attachPostPaymentFailureGuard(res, {
+        replayKey,
+        priceSats: options.priceSats,
+        rail: railLabel,
+      });
       return next();
     }
 
@@ -377,7 +441,37 @@ export function createOmniRailMiddleware(
       }
 
       const replayKey = `${networkId}:${signature}`;
-      if (consumedProofSet.has(replayKey) || inFlightProofSet.has(replayKey)) {
+      if (inFlightProofSet.has(replayKey)) {
+        return res.status(402).json({
+          error: 'EVM Replay Rejected',
+          details: 'This EVM payment proof has already been consumed.',
+        });
+      }
+
+      const asset = String(auth?.asset || chainConfig.usdcContract);
+      const isNativeAsset =
+        asset.toUpperCase() === 'ETH' ||
+        asset.toUpperCase() === 'POL' ||
+        asset === '0x0000000000000000000000000000000000000000';
+
+      if (consumedProofSet.has(replayKey)) {
+        const recovery = acquireUnfulfilledPaymentRecovery(replayKey, options.priceSats);
+        if (recovery.recovered) {
+          const railLabel = resolveEvmRailLabel(
+            chainConfig,
+            networkId,
+            isNativeAsset,
+            parsedEvm.verifyOnChain === true
+          );
+          res.setHeader('X-Payment-Rail', railLabel);
+          (req as any).paymentRail = railLabel;
+          attachPostPaymentFailureGuard(res, {
+            replayKey,
+            priceSats: options.priceSats,
+            rail: railLabel,
+          });
+          return next();
+        }
         return res.status(402).json({
           error: 'EVM Replay Rejected',
           details: 'This EVM payment proof has already been consumed.',
@@ -403,7 +497,7 @@ export function createOmniRailMiddleware(
             });
           }
           consumedProofSet.add(replayKey);
-          const railLabel = `RAIL-4:EVM-${chainConfig.name.toUpperCase().replace(/\s+/g, '-')}-ONCHAIN-VERIFIED`;
+          const railLabel = resolveEvmRailLabel(chainConfig, networkId, isNativeAsset, true);
           res.setHeader('X-Payment-Rail', railLabel);
           (req as any).paymentRail = railLabel;
           (req as any).onChainReceipt = {
@@ -412,6 +506,11 @@ export function createOmniRailMiddleware(
             valueWei: onChain.valueWei,
             blockNumber: onChain.blockNumber,
           };
+          attachPostPaymentFailureGuard(res, {
+            replayKey,
+            priceSats: options.priceSats,
+            rail: railLabel,
+          });
           return next();
         } finally {
           inFlightProofSet.delete(replayKey);
@@ -428,12 +527,6 @@ export function createOmniRailMiddleware(
           details: 'Invalid recipient address.',
         });
       }
-
-      const asset = String(auth.asset || chainConfig.usdcContract);
-      const isNativeAsset =
-        asset.toUpperCase() === 'ETH' ||
-        asset.toUpperCase() === 'POL' ||
-        asset === '0x0000000000000000000000000000000000000000';
 
       const requiredBigInt = BigInt(isNativeAsset ? options.priceEthWei : options.priceUsdcAtomic);
       let valueBigInt = 0n;
@@ -456,6 +549,7 @@ export function createOmniRailMiddleware(
           auth,
           signature,
           requiredAtomic: requiredBigInt,
+          requiredPriceSats: options.priceSats,
           requirement: {
             scheme: 'exact',
             network: 'eip155:8453',
@@ -480,13 +574,15 @@ export function createOmniRailMiddleware(
 
       consumedProofSet.add(replayKey);
 
-      const railLabel =
-        networkId === 'eip155:8453' && !isNativeAsset
-          ? 'RAIL-2:BASE-X402-USDC'
-          : `RAIL-4:EVM-${chainConfig.name.toUpperCase().replace(/\s+/g, '-')}-${isNativeAsset ? chainConfig.nativeSymbol : 'USDC'}`;
+      const railLabel = resolveEvmRailLabel(chainConfig, networkId, isNativeAsset, false);
 
       res.setHeader('X-Payment-Rail', railLabel);
       (req as any).paymentRail = railLabel;
+      attachPostPaymentFailureGuard(res, {
+        replayKey,
+        priceSats: options.priceSats,
+        rail: railLabel,
+      });
       return next();
     }
 

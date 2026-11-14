@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
 import { createHmac } from 'crypto';
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { BitcoinRpcAdapter } from '../src/infrastructure/bitcoin/bitcoin-rpc.adapter.js';
 import { LndGatewayAdapter } from '../src/infrastructure/lightning/lnd-gateway.adapter.js';
 import { L402Service } from '../src/application/services/l402.service.js';
@@ -43,7 +44,7 @@ function createTestServer() {
   app.use(createNodeTruthRouter(nodeTruthService, l402Service));
   app.use(createOmniRailRouter(nodeTruthService, l402Service));
 
-  return { app, btcAdapter, l402Service };
+  return { app, btcAdapter, l402Service, nodeTruthService };
 }
 
 async function startServer(app: express.Express): Promise<{ baseUrl: string; close: () => Promise<void> }> {
@@ -358,6 +359,241 @@ test('RED-TEAM 4 & 5: Live Mempool RBF Edge-Case Hunt & 100x Concurrent Load Ben
     assert.strictEqual(okCount, 100, 'All 100 concurrent cached requests must return 200 OK');
     console.log(`[RED-TEAM 100x LOAD] 100 parallel requests completed in ${totalMs.toFixed(2)}ms (avg ${(totalMs / 100).toFixed(2)}ms/req, 0% 5xx)`);
   } finally {
+    await close();
+  }
+});
+
+test('RED-TEAM 6: Post-Payment 500 Failure Recovery (Retry Voucher & Idempotent Nonce Retry)', async () => {
+  const { app, btcAdapter, nodeTruthService } = createTestServer();
+  await btcAdapter.getMempoolEntropy(); // prime cache for fast recovery requests
+  const { baseUrl, close } = await startServer(app);
+
+  const originalFetch = globalThis.fetch;
+  const originalGetMempool = nodeTruthService.getMempoolEntropy.bind(nodeTruthService);
+  let settleCalls = 0;
+
+  const account = privateKeyToAccount(generatePrivateKey());
+  const nowSec = Math.floor(Date.now() / 1000);
+
+  async function buildSignedX402Header(nonceHex: `0x${string}`, valueAtomic: bigint): Promise<string> {
+    const auth = {
+      from: account.address,
+      to: BASE_PAY_TO_ADDRESS as `0x${string}`,
+      value: valueAtomic,
+      validAfter: 0n,
+      validBefore: BigInt(nowSec + 3600),
+      nonce: nonceHex,
+    };
+    const signature = await account.signTypedData({
+      domain: {
+        name: 'USD Coin',
+        version: '2',
+        chainId: 8453,
+        verifyingContract: BASE_USDC_CONTRACT as `0x${string}`,
+      },
+      types: {
+        TransferWithAuthorization: [
+          { name: 'from', type: 'address' },
+          { name: 'to', type: 'address' },
+          { name: 'value', type: 'uint256' },
+          { name: 'validAfter', type: 'uint256' },
+          { name: 'validBefore', type: 'uint256' },
+          { name: 'nonce', type: 'bytes32' },
+        ],
+      },
+      primaryType: 'TransferWithAuthorization',
+      message: auth,
+    });
+
+    return Buffer.from(
+      JSON.stringify({
+        x402Version: 2,
+        payload: {
+          authorization: {
+            from: auth.from,
+            to: auth.to,
+            value: auth.value.toString(),
+            validAfter: auth.validAfter.toString(),
+            validBefore: auth.validBefore.toString(),
+            nonce: auth.nonce,
+          },
+          signature,
+        },
+      })
+    ).toString('base64');
+  }
+
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+    if (url.includes('mainnet.base.org')) {
+      const bodyStr = typeof init?.body === 'string' ? init.body : '';
+      let parsed: any = {};
+      try {
+        parsed = JSON.parse(bodyStr);
+      } catch {
+        // ignore
+      }
+      const rpcId = Array.isArray(parsed) ? (parsed[0]?.id ?? 1) : (parsed?.id ?? 1);
+      const rpcRes = {
+        jsonrpc: '2.0',
+        id: rpcId,
+        result: `0x${(1_000_000n).toString(16).padStart(64, '0')}`,
+      };
+      return new Response(JSON.stringify(Array.isArray(parsed) ? [rpcRes] : rpcRes), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (url.includes('/settle')) {
+      settleCalls += 1;
+      return new Response(
+        JSON.stringify({ success: true, transaction: `0xsettled${settleCalls.toString().padStart(57, '0')}` }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    return originalFetch(input, init);
+  }) as typeof fetch;
+
+  try {
+    // 1. x402 Base USDC payment hits simulated RPC 500 -> returns Retry Voucher
+    const x402Header1 = await buildSignedX402Header(`0x${'a1'.repeat(32)}`, 2000n);
+    nodeTruthService.getMempoolEntropy = async () => {
+      throw new Error('Simulated bitcoind RPC timeout');
+    };
+
+    const failRes1 = await fetch(`${baseUrl}/v1/chain/btc/mempool`, {
+      headers: { 'Payment-Signature': x402Header1 },
+    });
+    assert.strictEqual(failRes1.status, 500, 'Downstream RPC failure must return 500');
+    assert.strictEqual(settleCalls, 1, 'Initial x402 payment should settle exactly once');
+    const voucher1 = failRes1.headers.get('x-payment-retry-voucher');
+    assert.ok(voucher1, '500 response must include X-Payment-Retry-Voucher header');
+    const failBody1: any = await failRes1.json();
+    assert.strictEqual(failBody1.paymentProtected, true);
+    assert.strictEqual(failBody1.retryVoucher, voucher1);
+
+    // Tamper check on voucher1 (upgrade price_sats=2 -> price_sats=5 without valid HMAC)
+    const decodedV1 = JSON.parse(Buffer.from(voucher1, 'base64').toString('utf8'));
+    decodedV1.caveat = decodedV1.caveat.replace('price_sats=2', 'price_sats=5');
+    const tamperedVoucher = Buffer.from(JSON.stringify(decodedV1)).toString('base64');
+    const tamperRes = await fetch(`${baseUrl}/v1/chain/btc/rbf-shield/${'3'.repeat(64)}`, {
+      headers: { 'X-Payment-Retry-Voucher': tamperedVoucher },
+    });
+    assert.strictEqual(tamperRes.status, 402, 'Tampered retry voucher must be rejected');
+
+    // Price upgrade check: 2-sat voucher cannot redeem 5-sat endpoint
+    const upgradeRes = await fetch(`${baseUrl}/v1/chain/btc/rbf-shield/${'3'.repeat(64)}`, {
+      headers: { 'X-Payment-Retry-Voucher': voucher1 },
+    });
+    assert.strictEqual(upgradeRes.status, 402, '2-sat voucher must be rejected on 5-sat endpoint');
+
+    // 2. Restore RPC -> redeem X-Payment-Retry-Voucher -> 200 OK
+    nodeTruthService.getMempoolEntropy = originalGetMempool;
+    const voucherOkRes = await fetch(`${baseUrl}/v1/chain/btc/mempool`, {
+      headers: { 'X-Payment-Retry-Voucher': voucher1 },
+    });
+    assert.strictEqual(voucherOkRes.status, 200, 'Valid retry voucher must succeed with 200 OK');
+    assert.strictEqual(voucherOkRes.headers.get('x-payment-rail'), 'RETRY-VOUCHER-RECOVERY');
+
+    // 3. Anti-double-dip & replay after 200 OK: neither voucher1 nor x402Header1 can be reused
+    const voucherReplayRes = await fetch(`${baseUrl}/v1/chain/btc/mempool`, {
+      headers: { 'X-Payment-Retry-Voucher': voucher1 },
+    });
+    assert.strictEqual(voucherReplayRes.status, 402, 'Used retry voucher must be rejected with 402');
+
+    const headerAfterVoucherRes = await fetch(`${baseUrl}/v1/chain/btc/mempool`, {
+      headers: { 'Payment-Signature': x402Header1 },
+    });
+    assert.strictEqual(
+      headerAfterVoucherRes.status,
+      402,
+      'Original x402 header must be rejected after retry voucher was redeemed'
+    );
+    assert.strictEqual(settleCalls, 1, 'Facilitator /settle must not be re-invoked on replays');
+
+    // 4. Same-header idempotent retry on x402 Base USDC without using voucher header
+    const x402Header2 = await buildSignedX402Header(`0x${'b2'.repeat(32)}`, 2000n);
+    nodeTruthService.getMempoolEntropy = async () => {
+      throw new Error('Simulated bitcoind RPC failure #2');
+    };
+
+    const failRes2 = await fetch(`${baseUrl}/v1/chain/btc/mempool`, {
+      headers: { 'Payment-Signature': x402Header2 },
+    });
+    assert.strictEqual(failRes2.status, 500);
+    assert.strictEqual(settleCalls, 2);
+    const voucher2 = failRes2.headers.get('x-payment-retry-voucher');
+    assert.ok(voucher2);
+
+    nodeTruthService.getMempoolEntropy = originalGetMempool;
+    const sameHeaderRetryRes = await fetch(`${baseUrl}/v1/chain/btc/mempool`, {
+      headers: { 'Payment-Signature': x402Header2 },
+    });
+    assert.strictEqual(
+      sameHeaderRetryRes.status,
+      200,
+      'Same Payment-Signature header retry after 500 must recover without re-settling'
+    );
+    assert.strictEqual(settleCalls, 2, 'Same-header recovery must NOT call /settle again');
+
+    // Subsequent reuse of x402Header2 OR voucher2 must both be rejected with 402
+    const sameHeaderReplayRes = await fetch(`${baseUrl}/v1/chain/btc/mempool`, {
+      headers: { 'Payment-Signature': x402Header2 },
+    });
+    assert.strictEqual(sameHeaderReplayRes.status, 402, 'Second retry of same x402 header must return 402');
+
+    const voucherAfterHeaderRes = await fetch(`${baseUrl}/v1/chain/btc/mempool`, {
+      headers: { 'X-Payment-Retry-Voucher': voucher2 },
+    });
+    assert.strictEqual(
+      voucherAfterHeaderRes.status,
+      402,
+      'Voucher must be invalidated once same-header retry succeeds'
+    );
+
+    // 5. Omni-Rail EVM same-header recovery after 500
+    const omniEvmHeader = Buffer.from(
+      JSON.stringify({
+        network: 'eip155:42161',
+        authorization: {
+          from: '0x5555555555555555555555555555555555555555',
+          to: BASE_PAY_TO_ADDRESS,
+          value: '2000',
+        },
+        signature: `0x${'d4'.repeat(32)}`,
+      })
+    ).toString('base64');
+
+    nodeTruthService.getMempoolEntropy = async () => {
+      throw new Error('Simulated omni RPC failure');
+    };
+    const omniFail = await fetch(`${baseUrl}/v1/omni/btc/mempool`, {
+      headers: { 'X-EVM-Payment': omniEvmHeader },
+    });
+    assert.strictEqual(omniFail.status, 500);
+    const omniVoucher = omniFail.headers.get('x-payment-retry-voucher');
+    assert.ok(omniVoucher);
+
+    nodeTruthService.getMempoolEntropy = originalGetMempool;
+    const omniRecover = await fetch(`${baseUrl}/v1/omni/btc/mempool`, {
+      headers: { 'X-EVM-Payment': omniEvmHeader },
+    });
+    assert.strictEqual(omniRecover.status, 200);
+
+    const omniReplay = await fetch(`${baseUrl}/v1/omni/btc/mempool`, {
+      headers: { 'X-EVM-Payment': omniEvmHeader },
+    });
+    assert.strictEqual(omniReplay.status, 402);
+
+    const omniVoucherAfter = await fetch(`${baseUrl}/v1/omni/btc/mempool`, {
+      headers: { 'X-Payment-Retry-Voucher': omniVoucher },
+    });
+    assert.strictEqual(omniVoucherAfter.status, 402);
+
+    console.log('[RED-TEAM RECOVERY] Retry Voucher & Idempotent Nonce Recovery verified across Dual-Rail & Omni-Rail');
+  } finally {
+    globalThis.fetch = originalFetch;
+    nodeTruthService.getMempoolEntropy = originalGetMempool;
     await close();
   }
 });
