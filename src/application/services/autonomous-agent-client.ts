@@ -3,6 +3,7 @@ import { ILightningPayer } from '../interfaces/lightning-payer.interface.js';
 export interface AgentRequestOptions {
   headers?: Record<string, string>;
   maxPriceSatsAllowed?: number; // Budget guardrail to protect agent
+  maxRetriesOn500?: number;
 }
 
 export class AutonomousL402Agent {
@@ -63,7 +64,20 @@ export class AutonomousL402Agent {
       Authorization: `L402 ${macaroon}:${payment.preimage}`,
     };
 
-    const finalRes = await fetch(url, { headers: authorizedHeaders });
+    let finalRes = await fetch(url, { headers: authorizedHeaders });
+    const maxRetriesOn500 = options.maxRetriesOn500 ?? 1;
+
+    for (let attempt = 0; attempt < maxRetriesOn500 && finalRes.status >= 500; attempt++) {
+      const retryVoucher = finalRes.headers.get('x-payment-retry-voucher');
+      if (!retryVoucher) break;
+      finalRes = await fetch(url, {
+        headers: {
+          ...headers,
+          'X-Payment-Retry-Voucher': retryVoucher,
+        },
+      });
+    }
+
     if (!finalRes.ok) {
       throw new Error(`L402 Access Failed (${finalRes.status}): ${await finalRes.text()}`);
     }

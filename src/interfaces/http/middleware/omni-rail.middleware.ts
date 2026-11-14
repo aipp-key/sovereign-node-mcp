@@ -160,10 +160,9 @@ async function verifyEvmOnChainTx(
     }
 
     const toAddr = (tx.to || '').toLowerCase();
-    const fromAddr = (tx.from || '').toLowerCase();
     const expectedLower = expectedRecipient.toLowerCase();
 
-    if (toAddr !== expectedLower && toAddr !== fromAddr) {
+    if (toAddr !== expectedLower) {
       return {
         valid: false,
         reason: `Recipient mismatch: tx sent to ${tx.to}, expected ${expectedRecipient}`,
