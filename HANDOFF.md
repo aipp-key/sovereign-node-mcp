@@ -1,6 +1,6 @@
 # 🚀 SOVEREIGN NODE ENGINE — DEVİR TESLİM VE STRATEJİK YOL HARİTASI (HANDOFF)
 
-**Son Güncelleme:** 14 Kasım 2026 (Cumartesi) — Ödeme Sonrası 500 Hata Telafisi (Retry Voucher + Idempotent Nonce Recovery), 26/26 Test Yeşil & Canlıya Alındı  
+**Son Güncelleme:** 14 Kasım 2026 (Cumartesi) — Derin Güvenlik Sertleştirmesi, Retry Voucher & 34/34 Saldırı/Stres Testi Yeşil & Canlıya Alındı  
 **Yerel Proje Dizini:** `C:\Users\faruk\Desktop\dev\sovereign-node-engine`  
 **Canlı Sunucu Dizini:** `/srv/sovereign-node-engine` (`100.95.119.88:3088` - Tailscale)  
 **Canlı Ağ Geçidi:** `https://node.sovroute.com`  
@@ -128,8 +128,13 @@ TaskFuel kataloğundaki *"Crypto & Prediction Markets -> Read the Blockchain"* k
 * [x] **Ödeme Sonrası Hata Telafisi (`retry-voucher.helper.ts`, `l402.middleware.ts`, `omni-rail.middleware.ts`):**
   * **Katman 1 (Idempotent Nonce / Proof Recovery):** Ödeme (x402 Base USDC, Solana veya Multi-EVM) doğrulandıktan sonra RPC/sunucu `>= 500` dönerse, `replayKey` 1 saatlik telafi havuzuna (`unfulfilledPayments`) alınır. İstemci aynı ödeme başlığını tekrar gönderdiğinde harici `/settle` tekrar çağrılmadan imza doğrulanıp istek ücretsiz karşılanır ve `200 OK` sonrası kalıcı olarak tüketilir.
   * **Katman 2 (`X-Payment-Retry-Voucher`):** Ödeme sonrası `>= 500` yanıtlarına HMAC-SHA256 imzalı tek kullanımlık `X-Payment-Retry-Voucher` header'ı ve `paymentProtected: true` / `retryVoucher` JSON alanları eklenir; ajan `<= priceSats` bir uçta tek seferlik telafi hakkını kullanabilir.
-  * **Anti-Double-Dip Kilidi:** Aynı `replayKey` ve `voucherId` tek bir kilit altında birleştirildi (`RED-TEAM 6` doğrulandı; toplam **26/26** test yeşil).
-  * **Canlı Doğrulama:** `root@100.95.119.88:/srv/sovereign-node-engine` derlendi, `sovereign-node-engine.service` yeniden başlatıldı; `https://node.sovroute.com/health` (`200 OK`) ve `/v1/chain/btc/fees` (`402` + `X-Payment-Retry-Voucher` CORS exposure) doğrulandı.
+  * **Anti-Double-Dip Kilidi:** Aynı `replayKey` ve `voucherId` tek bir kilit altında birleştirildi (`RED-TEAM 6` doğrulandı).
+* [x] **Derin Güvenlik Sertleştirmesi & Genişletilmiş Saldırı Paketi (`tests/security-attack-suite.test.ts` — 8/8, Toplam 34/34 Yeşil):**
+  * **Split-Hash & Split-ID Koruması:** `macaroon.helper.ts`, `l402.service.ts` ve `retry-voucher.helper.ts` içinde `paymentHash` ve `voucherId` alanlarının imzalı `caveat` ile birebir eşleşmesi zorunlu kılındı (`SEC-ATTACK 1 & 8`).
+  * **`BigInt` Crash / Null-JSON / Bozuk `X-Solana-Payment` DoS Koruması:** `parseSafeUintBigInt` ile geçersiz sayısal girdiler ve `null`/`[]`/ilkel JSON başlıkları (bozuk `X-Solana-Payment` ile fatura oluşturma DoS'u dahil) ödeme öncesi/içi `402` ile kesildi (`SEC-ATTACK 2`).
+  * **Query & Path Parameter Pollution Koruması:** `node-truth.controller.ts` ve `omni-rail.controller.ts` içinde `?txid[toString]=1`, `?txid[]=...` gibi nesne/dizi enjeksiyonları `400` ile ödeme öncesi engellendi (`SEC-ATTACK 3`).
+  * **50x Paralel EIP-3009 & Hibrit Telafi Yarışı + Kademeli 500 Testleri:** `inFlightX402Nonces` kilidiyle 50x EIP-3009 yarışında **1x `200`, 49x `402`**, 50x hibrit (`25x Voucher + 25x Header`) yarışında **1x `200`, 49x `402`**, kademeli 500 (`500 → Voucher 500 → 200 → Replay 402`) ve sahte imza/alıcı/tutar spoofing testleri başarıyla geçti (`SEC-ATTACK 4–7`).
+  * **Canlı Doğrulama:** `root@100.95.119.88:/srv/sovereign-node-engine` derlendi, `sovereign-node-engine.service` yeniden başlatıldı; `https://node.sovroute.com/health` (`200 OK`), `openapi.json` (`200`), `llms.txt` (`200`) ve canlı saldırı probları (`400`/`402`, `%0` 5xx) doğrulandı.
 
 ### 📅 Bugün (14 Kasım 2026 Cumartesi) Kalan Adım:
 1. **TaskFuel / Moritz Kaminski E-postası:** Bölüm 3'teki dondurulmuş İngilizce e-posta gönderilecek.

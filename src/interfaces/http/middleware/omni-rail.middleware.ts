@@ -3,6 +3,7 @@ import { L402Service } from '../../../application/services/l402.service.js';
 import {
   BASE_PAY_TO_ADDRESS,
   BASE_USDC_CONTRACT,
+  parseSafeUintBigInt,
   verifyAndSettleX402Payment,
 } from './l402.middleware.js';
 import {
@@ -307,14 +308,29 @@ export function createOmniRailMiddleware(
         return g && typeof g.network === 'string' && g.network.startsWith('solana:') ? g : null;
       })();
 
+    if (
+      rawSolanaHeader !== undefined &&
+      (!parsedSolana || typeof parsedSolana !== 'object' || Array.isArray(parsedSolana))
+    ) {
+      return res.status(402).json({
+        error: 'Solana Payment Verification Failed',
+        details: 'Malformed Solana payment payload.',
+        rail: 'RAIL-3:SOLANA',
+      });
+    }
+
     if (parsedSolana) {
-      const payload = parsedSolana.payload || parsedSolana;
+      const payload =
+        parsedSolana.payload &&
+        typeof parsedSolana.payload === 'object' &&
+        !Array.isArray(parsedSolana.payload)
+          ? parsedSolana.payload
+          : parsedSolana;
       const recipient = payload.to || payload.payTo || payload.recipient || SOLANA_PAY_TO_ADDRESS;
       const asset = payload.asset || SOLANA_USDC_MINT;
       const signature = payload.signature || payload.txSignature;
-      const rawAmount = String(payload.amount ?? payload.value ?? '0');
 
-      if (!signature || typeof signature !== 'string' || recipient !== SOLANA_PAY_TO_ADDRESS) {
+      if (!signature || typeof signature !== 'string' || typeof recipient !== 'string' || recipient !== SOLANA_PAY_TO_ADDRESS) {
         return res.status(402).json({
           error: 'Solana Payment Verification Failed',
           details: 'Invalid recipient address or missing Solana transaction signature.',
@@ -332,33 +348,29 @@ export function createOmniRailMiddleware(
       }
 
       const isNativeSol = asset === 'SOL' || asset === SOLANA_NATIVE_MINT;
-      if (consumedProofSet.has(replayKey)) {
-        const recovery = acquireUnfulfilledPaymentRecovery(replayKey, options.priceSats);
-        if (recovery.recovered) {
-          const railLabel =
-            payload.verifyOnChain === true
-              ? 'RAIL-3:SOLANA-MAINNET-ONCHAIN-VERIFIED'
-              : isNativeSol
-                ? 'RAIL-3:SOLANA-NATIVE-SOL'
-                : 'RAIL-3:SOLANA-SPL-USDC';
-          res.setHeader('X-Payment-Rail', railLabel);
-          (req as any).paymentRail = railLabel;
-          attachPostPaymentFailureGuard(res, {
-            replayKey,
-            priceSats: options.priceSats,
-            rail: railLabel,
-          });
-          return next();
-        }
-        return res.status(402).json({
-          error: 'Solana Replay Rejected',
-          details: 'This Solana payment signature has already been consumed.',
-          rail: 'RAIL-3:SOLANA',
-        });
-      }
 
       // If verifyOnChain is true (live wallet mode), verify directly against Solana Mainnet RPC
       if (payload.verifyOnChain === true) {
+        if (consumedProofSet.has(replayKey)) {
+          const recovery = acquireUnfulfilledPaymentRecovery(replayKey, options.priceSats);
+          if (recovery.recovered) {
+            const railLabel = 'RAIL-3:SOLANA-MAINNET-ONCHAIN-VERIFIED';
+            res.setHeader('X-Payment-Rail', railLabel);
+            (req as any).paymentRail = railLabel;
+            attachPostPaymentFailureGuard(res, {
+              replayKey,
+              priceSats: options.priceSats,
+              rail: railLabel,
+            });
+            return next();
+          }
+          return res.status(402).json({
+            error: 'Solana Replay Rejected',
+            details: 'This Solana payment signature has already been consumed.',
+            rail: 'RAIL-3:SOLANA',
+          });
+        }
+
         inFlightProofSet.add(replayKey);
         try {
           const onChain = await verifySolanaOnChainTx(signature, SOLANA_PAY_TO_ADDRESS);
@@ -386,17 +398,32 @@ export function createOmniRailMiddleware(
       }
 
       const requiredAtomic = BigInt(isNativeSol ? options.priceSolLamports : options.priceUsdcAtomic);
-      let paidAtomic = 0n;
-      try {
-        paidAtomic = BigInt(rawAmount);
-      } catch {
-        paidAtomic = 0n;
-      }
+      const paidAtomic = parseSafeUintBigInt(payload.amount ?? payload.value);
 
-      if (paidAtomic < requiredAtomic) {
+      if (paidAtomic === null || paidAtomic < requiredAtomic) {
         return res.status(402).json({
           error: 'Solana Insufficient Payment Amount',
-          details: `Required ${requiredAtomic.toString()} atomic units, received ${paidAtomic.toString()}.`,
+          details: `Required ${requiredAtomic.toString()} atomic units, received ${paidAtomic === null ? 'invalid' : paidAtomic.toString()}.`,
+          rail: 'RAIL-3:SOLANA',
+        });
+      }
+
+      if (consumedProofSet.has(replayKey)) {
+        const recovery = acquireUnfulfilledPaymentRecovery(replayKey, options.priceSats);
+        if (recovery.recovered) {
+          const railLabel = isNativeSol ? 'RAIL-3:SOLANA-NATIVE-SOL' : 'RAIL-3:SOLANA-SPL-USDC';
+          res.setHeader('X-Payment-Rail', railLabel);
+          (req as any).paymentRail = railLabel;
+          attachPostPaymentFailureGuard(res, {
+            replayKey,
+            priceSats: options.priceSats,
+            rail: railLabel,
+          });
+          return next();
+        }
+        return res.status(402).json({
+          error: 'Solana Replay Rejected',
+          details: 'This Solana payment signature has already been consumed.',
           rail: 'RAIL-3:SOLANA',
         });
       }
@@ -422,7 +449,7 @@ export function createOmniRailMiddleware(
       const networkId = parsedEvm?.network || 'eip155:8453';
       const chainConfig = SUPPORTED_EVM_CHAINS[networkId];
 
-      if (!parsedEvm || !chainConfig) {
+      if (!parsedEvm || typeof parsedEvm !== 'object' || Array.isArray(parsedEvm) || !chainConfig) {
         return res.status(402).json({
           error: 'EVM Payment Verification Failed',
           details: `Unsupported EVM network (${networkId}) or malformed payload.`,
@@ -454,32 +481,27 @@ export function createOmniRailMiddleware(
         asset.toUpperCase() === 'POL' ||
         asset === '0x0000000000000000000000000000000000000000';
 
-      if (consumedProofSet.has(replayKey)) {
-        const recovery = acquireUnfulfilledPaymentRecovery(replayKey, options.priceSats);
-        if (recovery.recovered) {
-          const railLabel = resolveEvmRailLabel(
-            chainConfig,
-            networkId,
-            isNativeAsset,
-            parsedEvm.verifyOnChain === true
-          );
-          res.setHeader('X-Payment-Rail', railLabel);
-          (req as any).paymentRail = railLabel;
-          attachPostPaymentFailureGuard(res, {
-            replayKey,
-            priceSats: options.priceSats,
-            rail: railLabel,
-          });
-          return next();
-        }
-        return res.status(402).json({
-          error: 'EVM Replay Rejected',
-          details: 'This EVM payment proof has already been consumed.',
-        });
-      }
-
       // Live On-Chain RPC Verification Mode (when real MetaMask txHash is submitted)
       if (parsedEvm.verifyOnChain === true && /^0x[0-9a-fA-F]{64}$/.test(signature)) {
+        if (consumedProofSet.has(replayKey)) {
+          const recovery = acquireUnfulfilledPaymentRecovery(replayKey, options.priceSats);
+          if (recovery.recovered) {
+            const railLabel = resolveEvmRailLabel(chainConfig, networkId, isNativeAsset, true);
+            res.setHeader('X-Payment-Rail', railLabel);
+            (req as any).paymentRail = railLabel;
+            attachPostPaymentFailureGuard(res, {
+              replayKey,
+              priceSats: options.priceSats,
+              rail: railLabel,
+            });
+            return next();
+          }
+          return res.status(402).json({
+            error: 'EVM Replay Rejected',
+            details: 'This EVM payment proof has already been consumed.',
+          });
+        }
+
         inFlightProofSet.add(replayKey);
         try {
           const minWei = BigInt(options.priceEthWei);
@@ -519,6 +541,8 @@ export function createOmniRailMiddleware(
 
       if (
         !auth ||
+        typeof auth !== 'object' ||
+        Array.isArray(auth) ||
         typeof auth.to !== 'string' ||
         auth.to.toLowerCase() !== BASE_PAY_TO_ADDRESS.toLowerCase()
       ) {
@@ -529,45 +553,60 @@ export function createOmniRailMiddleware(
       }
 
       const requiredBigInt = BigInt(isNativeAsset ? options.priceEthWei : options.priceUsdcAtomic);
-      let valueBigInt = 0n;
-      try {
-        valueBigInt = BigInt(auth.value ?? auth.amount ?? '0');
-      } catch {
-        valueBigInt = 0n;
-      }
+      const valueBigInt = parseSafeUintBigInt(auth.value ?? auth.amount);
 
-      if (valueBigInt < requiredBigInt) {
+      if (valueBigInt === null || valueBigInt < requiredBigInt) {
         return res.status(402).json({
           error: 'EVM Insufficient Payment Amount',
-          details: `Required ${requiredBigInt.toString()} atomic units, received ${valueBigInt.toString()}.`,
+          details: `Required ${requiredBigInt.toString()} atomic units, received ${valueBigInt === null ? 'invalid' : valueBigInt.toString()}.`,
         });
       }
 
+      let effectiveReplayKey = replayKey;
       if (networkId === 'eip155:8453' && !isNativeAsset) {
-        const x402Check = await verifyAndSettleX402Payment({
-          parsedX402: parsedEvm,
-          auth,
-          signature,
-          requiredAtomic: requiredBigInt,
-          requiredPriceSats: options.priceSats,
-          requirement: {
-            scheme: 'exact',
-            network: 'eip155:8453',
-            amount: requiredBigInt.toString(),
-            maxAmountRequired: requiredBigInt.toString(),
-            resource: fullResourceUrl,
-            description: options.description || options.resourceName,
-            mimeType: 'application/json',
-            asset: BASE_USDC_CONTRACT,
-            payTo: BASE_PAY_TO_ADDRESS,
-            maxTimeoutSeconds: 300,
-            extra: { name: 'USD Coin', version: '2' },
-          },
-        });
-        if (!x402Check.ok) {
+        if (process.env.X402_SKIP_VERIFY === 'true' && consumedProofSet.has(replayKey)) {
+          const recovery = acquireUnfulfilledPaymentRecovery(replayKey, options.priceSats);
+          if (!recovery.recovered) {
+            return res.status(402).json({
+              error: 'EVM Replay Rejected',
+              details: 'This EVM payment proof has already been consumed.',
+            });
+          }
+        } else {
+          const x402Check = await verifyAndSettleX402Payment({
+            parsedX402: parsedEvm,
+            auth,
+            signature,
+            requiredAtomic: requiredBigInt,
+            requiredPriceSats: options.priceSats,
+            requirement: {
+              scheme: 'exact',
+              network: 'eip155:8453',
+              amount: requiredBigInt.toString(),
+              maxAmountRequired: requiredBigInt.toString(),
+              resource: fullResourceUrl,
+              description: options.description || options.resourceName,
+              mimeType: 'application/json',
+              asset: BASE_USDC_CONTRACT,
+              payTo: BASE_PAY_TO_ADDRESS,
+              maxTimeoutSeconds: 300,
+              extra: { name: 'USD Coin', version: '2' },
+            },
+          });
+          if (!x402Check.ok) {
+            return res.status(402).json({
+              error: x402Check.error,
+              details: x402Check.details,
+            });
+          }
+          effectiveReplayKey = x402Check.replayKey;
+        }
+      } else if (consumedProofSet.has(replayKey)) {
+        const recovery = acquireUnfulfilledPaymentRecovery(replayKey, options.priceSats);
+        if (!recovery.recovered) {
           return res.status(402).json({
-            error: x402Check.error,
-            details: x402Check.details,
+            error: 'EVM Replay Rejected',
+            details: 'This EVM payment proof has already been consumed.',
           });
         }
       }
@@ -579,7 +618,7 @@ export function createOmniRailMiddleware(
       res.setHeader('X-Payment-Rail', railLabel);
       (req as any).paymentRail = railLabel;
       attachPostPaymentFailureGuard(res, {
-        replayKey,
+        replayKey: effectiveReplayKey,
         priceSats: options.priceSats,
         rail: railLabel,
       });

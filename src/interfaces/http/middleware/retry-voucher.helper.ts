@@ -78,10 +78,14 @@ export function verifyRetryVoucher(
   requiredPriceSats: number,
   secret?: string
 ): RetryVoucherVerifyResult {
-  let parsed: { caveat?: string; signature?: string };
+  let parsed: { caveat?: string; voucherId?: string; signature?: string };
   try {
     parsed = JSON.parse(Buffer.from(tokenBase64, 'base64').toString('utf8'));
   } catch {
+    return { valid: false, reason: 'Malformed retry voucher encoding.' };
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     return { valid: false, reason: 'Malformed retry voucher encoding.' };
   }
 
@@ -114,6 +118,9 @@ export function verifyRetryVoucher(
   }
 
   const voucherId = idMatch[1];
+  if (parsed.voucherId !== undefined && parsed.voucherId !== voucherId) {
+    return { valid: false, reason: 'Retry voucher ID mismatch with signed caveat.' };
+  }
   const priceSats = Number(priceMatch[1]);
   const rail = railMatch ? railMatch[1] : 'UNKNOWN';
   const expiresAt = Number(expMatch[1]);

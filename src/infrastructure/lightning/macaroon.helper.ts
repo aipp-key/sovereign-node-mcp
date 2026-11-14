@@ -14,10 +14,14 @@ export function verifyL402Macaroon(
   secretKey: string,
   expectedPriceSats?: number
 ): MacaroonVerifyResult {
-  let parsed: { caveat?: string; signature?: string };
+  let parsed: { caveat?: string; paymentHash?: string; signature?: string };
   try {
     parsed = JSON.parse(Buffer.from(macaroonBase64, 'base64').toString('utf8'));
   } catch {
+    return { valid: false, reason: 'Malformed macaroon encoding.' };
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     return { valid: false, reason: 'Malformed macaroon encoding.' };
   }
 
@@ -31,6 +35,18 @@ export function verifyL402Macaroon(
 
   if (actualBuf.length !== expectedBuf.length || !timingSafeEqual(actualBuf, expectedBuf)) {
     return { valid: false, reason: 'Macaroon HMAC signature verification failed.' };
+  }
+
+  const hashMatch = parsed.caveat.match(/payment_hash=([0-9a-fA-F]{64})/);
+  if (!hashMatch) {
+    return { valid: false, reason: 'Macaroon caveat missing valid payment_hash.' };
+  }
+  if (
+    parsed.paymentHash !== undefined &&
+    (typeof parsed.paymentHash !== 'string' ||
+      parsed.paymentHash.toLowerCase() !== hashMatch[1].toLowerCase())
+  ) {
+    return { valid: false, reason: 'Macaroon paymentHash mismatch with signed caveat.' };
   }
 
   const expMatch = parsed.caveat.match(/expires_at=(\d+)/);

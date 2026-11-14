@@ -69,12 +69,31 @@ export class L402Service {
     try {
       const decodedPayload = Buffer.from(macaroon, 'base64').toString('utf8');
       const parsedMacaroon = JSON.parse(decodedPayload);
-      if (parsedMacaroon.paymentHash) {
-        expectedPaymentHash = parsedMacaroon.paymentHash;
-      } else if (parsedMacaroon.caveat) {
-        const match = parsedMacaroon.caveat.match(/payment_hash=([0-9a-fA-F]{64})/);
-        if (match) expectedPaymentHash = match[1];
+      if (!parsedMacaroon || typeof parsedMacaroon !== 'object' || Array.isArray(parsedMacaroon)) {
+        return {
+          isValid: false,
+          errorReason: 'Malformed macaroon payload.',
+        };
       }
+      const caveatHash =
+        typeof parsedMacaroon.caveat === 'string'
+          ? parsedMacaroon.caveat.match(/payment_hash=([0-9a-fA-F]{64})/)?.[1]
+          : undefined;
+
+      if (
+        caveatHash &&
+        parsedMacaroon.paymentHash !== undefined &&
+        String(parsedMacaroon.paymentHash).toLowerCase() !== caveatHash.toLowerCase()
+      ) {
+        return {
+          isValid: false,
+          errorReason: 'Macaroon paymentHash does not match signed caveat payment_hash.',
+        };
+      }
+
+      expectedPaymentHash =
+        caveatHash ||
+        (typeof parsedMacaroon.paymentHash === 'string' ? parsedMacaroon.paymentHash : undefined);
     } catch {
       return {
         isValid: false,

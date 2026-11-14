@@ -14,9 +14,7 @@ import {
 
 function validateTxidParam(req: Request, res: Response, next: NextFunction): void {
   const rawTxid = req.params.txid;
-  const txid = Array.isArray(rawTxid) ? rawTxid[0] : rawTxid;
-
-  if (!txid || !/^[0-9a-fA-F]{64}$/.test(txid)) {
+  if (typeof rawTxid !== 'string' || !/^[0-9a-fA-F]{64}$/.test(rawTxid)) {
     res.status(400).json({ error: 'Invalid 64-character hex transaction ID' });
     return;
   }
@@ -24,9 +22,8 @@ function validateTxidParam(req: Request, res: Response, next: NextFunction): voi
 }
 
 function validateOptionalTxid(req: Request, res: Response, next: NextFunction): void {
-  const rawParam = req.params.txid || (req.query.txid as string | undefined);
-  const txid = Array.isArray(rawParam) ? rawParam[0] : rawParam;
-  if (txid && !/^[0-9a-fA-F]{64}$/.test(txid)) {
+  const rawParam = req.params.txid !== undefined ? req.params.txid : req.query.txid;
+  if (rawParam !== undefined && (typeof rawParam !== 'string' || !/^[0-9a-fA-F]{64}$/.test(rawParam))) {
     res.status(400).json({ error: 'Invalid optional 64-character hex transaction ID' });
     return;
   }
