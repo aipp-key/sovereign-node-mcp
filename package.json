@@ -1,6 +1,6 @@
 {
   "name": "@aipp/sovereign-node-mcp",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Zero-trust Bitcoin Core v31.1 Intelligence & Forensics MCP Server for AI Agents",
   "main": "dist/index.js",
   "publishConfig": {
@@ -22,17 +22,19 @@
     "sovereign-mcp": "dist/interfaces/mcp/index.js"
   },
   "keywords": [
-    "l402",
+    "mcp",
+    "model-context-protocol",
     "bitcoin",
     "lightning",
-    "alby",
-    "taskfuel",
+    "l402",
     "zero-trust",
     "mempool",
     "ai-agents",
-    "htlc"
+    "forensics",
+    "claude",
+    "cursor"
   ],
-  "author": "Antigravity Sovereign Team",
+  "author": "SovRoute & AIPP <contact@sovroute.com>",
   "license": "MIT",
   "dependencies": {
     "@getalby/sdk": "^9.0.0",
