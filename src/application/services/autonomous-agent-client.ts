@@ -1,6 +1,8 @@
 import { ILightningPayer } from '../interfaces/lightning-payer.interface.js';
 
 export interface AgentRequestOptions {
+  method?: string;
+  body?: string;
   headers?: Record<string, string>;
   maxPriceSatsAllowed?: number; // Budget guardrail to protect agent
   maxRetriesOn500?: number;
@@ -14,9 +16,11 @@ export class AutonomousL402Agent {
    */
   async fetch(url: string, options: AgentRequestOptions = {}): Promise<any> {
     const headers = { ...(options.headers || {}) };
+    const method = options.method || 'GET';
+    const body = options.body;
 
     // 1. First probe request (unauthenticated)
-    const initialRes = await fetch(url, { headers });
+    const initialRes = await fetch(url, { method, headers, body });
 
     // If endpoint is public or already authenticated, return response
     if (initialRes.status !== 402) {
@@ -64,17 +68,19 @@ export class AutonomousL402Agent {
       Authorization: `L402 ${macaroon}:${payment.preimage}`,
     };
 
-    let finalRes = await fetch(url, { headers: authorizedHeaders });
+    let finalRes = await fetch(url, { method, headers: authorizedHeaders, body });
     const maxRetriesOn500 = options.maxRetriesOn500 ?? 1;
 
     for (let attempt = 0; attempt < maxRetriesOn500 && finalRes.status >= 500; attempt++) {
       const retryVoucher = finalRes.headers.get('x-payment-retry-voucher');
       if (!retryVoucher) break;
       finalRes = await fetch(url, {
+        method,
         headers: {
           ...headers,
           'X-Payment-Retry-Voucher': retryVoucher,
         },
+        body,
       });
     }
 

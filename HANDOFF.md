@@ -141,10 +141,17 @@ TaskFuel kataloğundaki *"Crypto & Prediction Markets -> Read the Blockchain"* k
   * **`AutonomousL402Agent` & Phoenixd/NWC Kapsamı:** `autonomous-agent-client.ts` ödeme sonrası `>= 500` yanıtında `X-Payment-Retry-Voucher` ile otomatik telafi yapacak şekilde güncellendi (`SCENARIO 5`); `PhoenixdGatewayAdapter`, `PhoenixdPayerAdapter` ve `NwcPayerAdapter` doğrudan birim testleriyle doğrulandı (`FINAL-EDGE 3`); `live-node.test.ts` canlı blok kazılma yarışına karşı 1 kez taze örnek yenileme direnci kazandı.
   * **Canlı Doğrulama:** `root@100.95.119.88:/srv/sovereign-node-engine` derlendi, `sovereign-node-engine.service` yeniden başlatıldı; `https://node.sovroute.com/health` (`200 OK`), `openapi.json` (`200`), `llms.txt` (`200`) ve canlı saldırı probları (`400`/`402`, `%0` 5xx) doğrulandı.
 
-### 📅 Yarınki (15 Kasım 2026 Pazar) Eylem Sırası:
-1. **Gerçek Kripto Canlı Doğrulaması (`node.sovroute.com`):** Kendi gerçek Lightning (`L402` sats) ve Base (`x402` USDC) cüzdanlarımızla uçtan uca canlı Mainnet ödeme testi yapılacak (`/rbf-shield`, `/next-block-xray`, `/simulate-tx` + `/omni-test`).
-2. **TaskFuel / Moritz Kaminski E-postası:** Canlı cüzdan testi %100 sorunsuz geçtikten hemen sonra Bölüm 3'teki dondurulmuş İngilizce e-posta gönderilecek.
-3. **Diğer `x402` / `L402` / `MCP` Pazar Yerlerine Dağıtım:** TaskFuel sonrasında **Satring**, **Coinbase x402 Bazaar** (`/.well-known/x402` dahil), **x402.new**, **PayAI Network**, **Circle Agent Marketplace** ve **MCP dizinleri (`Smithery.ai`, `Glama.ai`)** kayıtları tamamlanacak.
+### 📅 15 KASIM 2026 PAZAR EYLEM DURUMU:
+* [x] **Gerçek Kripto Canlı Doğrulaması (`node.sovroute.com` — 15 Kasım 2026):**
+  * Phoenixd Mainnet Düğümü (`100.95.119.88:9740`, Block `975997`) üzerinden `https://node.sovroute.com` adli bilişim üçlüsü (`Forensics Trio`) gerçek Lightning Satoshileri ile uçtan uca test edildi ve %100 başarıyla geçti:
+    1. `GET /v1/chain/btc/next-block-xray` (3 sats) → **1,661ms** (`200 OK`, Preimage: `5c3caf4cbcbd9511...`, Aday Blok: `975998`, 4,847 TX, Toplam Ücret: `1,179,540 sats`)
+    2. `GET /v1/chain/btc/rbf-shield/:txid` (5 sats) → **1,591ms** (`200 OK`, Preimage: `d8baa2928b041c48...`, Mempool: `true`, BIP-125: `true`, Risk: `HIGH_RISK_RBF_ENABLED`, Ücret: `920.37 sat/vB`)
+    3. `POST /v1/chain/btc/simulate-tx` (5 sats) → **1,680ms** (`200 OK`, Preimage: `9c484d19f87b85a7...`, Consensus: `Allowed`, Mempool: `true`, Broadcast: `%0 P2P`, Vsize: `141 vB`)
+  * Toplam Harcanan: **12 sats**, Toplam İşlem Süresi: **4.9 saniye** (`scripts/verify-live-forensics-l402.ts`).
+
+### 🎯 Sıradaki Eylem Sırası:
+1. **TaskFuel / Moritz Kaminski E-postası:** Canlı cüzdan testi %100 onaylandığı için Bölüm 3'teki dondurulmuş İngilizce e-posta Moritz'e gönderilmeye hazır.
+2. **Diğer `x402` / `L402` / `MCP` Pazar Yerlerine Dağıtım:** TaskFuel sonrasında **Satring**, **Coinbase x402 Bazaar** (`/.well-known/x402` dahil), **x402.new**, **PayAI Network**, **Circle Agent Marketplace** ve **MCP dizinleri (`Smithery.ai`, `Glama.ai`)** kayıtları tamamlanacak.
 
 ---
 
