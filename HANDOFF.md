@@ -143,14 +143,21 @@ TaskFuel kataloğundaki *"Crypto & Prediction Markets -> Read the Blockchain"* k
 
 ### 📅 15 KASIM 2026 PAZAR EYLEM DURUMU:
 * [x] **Gerçek Kripto Canlı Doğrulaması (`node.sovroute.com` — 15 Kasım 2026):**
-  * Phoenixd Mainnet Düğümü (`100.95.119.88:9740`, Block `975997`) üzerinden `https://node.sovroute.com` adli bilişim üçlüsü (`Forensics Trio`) gerçek Lightning Satoshileri ile uçtan uca test edildi ve %100 başarıyla geçti:
-    1. `GET /v1/chain/btc/next-block-xray` (3 sats) → **1,661ms** (`200 OK`, Preimage: `5c3caf4cbcbd9511...`, Aday Blok: `975998`, 4,847 TX, Toplam Ücret: `1,179,540 sats`)
-    2. `GET /v1/chain/btc/rbf-shield/:txid` (5 sats) → **1,591ms** (`200 OK`, Preimage: `d8baa2928b041c48...`, Mempool: `true`, BIP-125: `true`, Risk: `HIGH_RISK_RBF_ENABLED`, Ücret: `920.37 sat/vB`)
-    3. `POST /v1/chain/btc/simulate-tx` (5 sats) → **1,680ms** (`200 OK`, Preimage: `9c484d19f87b85a7...`, Consensus: `Allowed`, Mempool: `true`, Broadcast: `%0 P2P`, Vsize: `141 vB`)
-  * Toplam Harcanan: **12 sats**, Toplam İşlem Süresi: **4.9 saniye** (`scripts/verify-live-forensics-l402.ts`).
+  * **RAY 1: Phoenixd Mainnet Lightning (L402 Satoshis):**
+    * Düğüm: `100.95.119.88:9740` (Blok: `975997`, Bakiye: `15,417 sats`)
+    * 1. `GET /v1/chain/btc/next-block-xray` (3 sats) → **1,661ms** (`200 OK`, Preimage: `5c3caf4cbcbd9511...`, Aday Blok: `975998`, 4,847 TX, Toplam Ücret: `1,179,540 sats`)
+    * 2. `GET /v1/chain/btc/rbf-shield/:txid` (5 sats) → **1,591ms** (`200 OK`, Preimage: `d8baa2928b041c48...`, Mempool: `true`, BIP-125: `true`, Risk: `HIGH_RISK_RBF_ENABLED`, Ücret: `920.37 sat/vB`)
+    * 3. `POST /v1/chain/btc/simulate-tx` (5 sats) → **1,680ms** (`200 OK`, Preimage: `9c484d19f87b85a7...`, Consensus: `Allowed`, Mempool: `true`, Broadcast: `%0 P2P`, Vsize: `141 vB`)
+    * Toplam Harcanan: **12 sats**, Toplam İşlem Süresi: **4.9 saniye** (`scripts/verify-live-forensics-l402.ts`).
+  * **RAY 2: Gerçek MetaMask Base USDC (x402 EIP-3009 Gasless TransferWithAuthorization):**
+    * Payer: `0xb30ded1b7bc90e459a9820aaaf0297165e9f30fa` (Proofwax) → PayTo Kasa: `0x488cbDad29E60d8Bae53FFF4c4252C9711dF9784`
+    * 1. `GET /v1/chain/btc/rbf-shield/1abeb730...` ($0.005 Base USDC / 5,000 atomic units) → **`200 OK`** (`Payment-Response` üretildi, `zeroConfRiskLevel: HIGH_RISK_RBF_ENABLED`, BIP-125: true, Fee Rate: 3 sat/vB).
+    * 2. `GET /v1/chain/btc/next-block-xray` ($0.003 Base USDC / 3,000 atomic units) → **`200 OK`** (Aday Blok: `975998`, 3,488 TX, Toplam Ücret: `2,149,904 sats`, Doluluk: `%99.8`, Top Whale TX: `2,299.43 sat/vB`).
+    * 3. `POST /v1/chain/btc/simulate-tx` ($0.005 Base USDC / 5,000 atomic units) → **`200 OK`** (TXID: `8fd011bc...`, `consensusAllowed: true`, `alreadyInMempool: true`, `broadcastedToNetwork: false`, Vsize: `1225 vB`).
+    * **Sonuç:** Dual-Rail (L402 Lightning + x402 Base USDC) iki rayda da **gerçek cüzdanlar ve canlı Mainnet parasıyla %100 doğrulandı!**
 
 ### 🎯 Sıradaki Eylem Sırası:
-1. **TaskFuel / Moritz Kaminski E-postası:** Canlı cüzdan testi %100 onaylandığı için Bölüm 3'teki dondurulmuş İngilizce e-posta Moritz'e gönderilmeye hazır.
+1. **TaskFuel / Moritz Kaminski E-postası:** Hem Lightning hem Base USDC canlı cüzdan testleri %100 başarıyla kanıtlandığı için Bölüm 3'teki dondurulmuş İngilizce e-posta Moritz'e gönderilmeye hazır.
 2. **Diğer `x402` / `L402` / `MCP` Pazar Yerlerine Dağıtım:** TaskFuel sonrasında **Satring**, **Coinbase x402 Bazaar** (`/.well-known/x402` dahil), **x402.new**, **PayAI Network**, **Circle Agent Marketplace** ve **MCP dizinleri (`Smithery.ai`, `Glama.ai`)** kayıtları tamamlanacak.
 
 ---
