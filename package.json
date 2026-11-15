@@ -1,6 +1,6 @@
 {
   "name": "@aipp/sovereign-node-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Zero-trust Bitcoin Core v31.1 Intelligence & Forensics MCP Server for AI Agents",
   "main": "dist/index.js",
   "publishConfig": {

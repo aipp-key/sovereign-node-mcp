@@ -1,63 +1,76 @@
-# Sovereign Node Engine (Egemen Düğüm Motoru)
+# @aipp/sovereign-node-mcp
 
-> **Zero-Trust Sovereign Node Intelligence & Cross-Rail L402 Settlement Engine for AI Agents**  
-> *Aligned with Alby Hub, NWC (NIP-47), and TaskFuel Ecosystems*
+[![npm version](https://img.shields.io/npm/v/@aipp/sovereign-node-mcp.svg?color=orange)](https://www.npmjs.com/package/@aipp/sovereign-node-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![MCP Compliant](https://img.shields.io/badge/Model_Context_Protocol-Verified-green.svg)](https://modelcontextprotocol.io)
 
----
-
-## 🏛️ Mimari Vizyon ve Konumlandırma
-
-Bu motor, yapay zeka ajanları için **merkeziyetsiz, sansürlenemez ve doğrulanabilir** bir veri ve mutabakat omurgasıdır.
-
-* **Alby & TaskFuel İle Simbiyotik İlişki:**
-  * TaskFuel'e rakip bir pazar yeri değil; TaskFuel kataloğuna ve Alby ajanlarına giren **birinci sınıf "Egemen Veri Sağlayıcısı" (Sovereign Node Intelligence Provider)**.
-  * Alby Hub (`hub.aipp.dev`) ve Nostr Wallet Connect (NWC) standartlarıyla yerel entegre.
-  * Ajanların emanetçi (custodial) yapılardan kurtulup **L402 mikro-ödemeleri** ile saniyelik satoshiler karşılığında doğrudan bare-metal Bitcoin Full Node'undan gerçeklik satın almasını sağlar.
+> **Zero-Trust Bitcoin Core v31.1 Intelligence, 0-Conf RBF Forensics, and Consensus Simulation for AI Agents.**  
+> Built for Anthropic Claude Desktop, Cursor IDE, Windsurf, LangChain, and autonomous agents. Connects directly to bare-metal Bitcoin Mainnet with **~0.04ms in-memory cache latency** and native **Dual-Rail (L402 Lightning + Base USDC x402)** micro-settlement.
 
 ---
 
-## 🛠️ Katmanlı Mimari (Strict 3-Tier Clean Architecture)
+## ⚡ Quick Start
 
+You can run the Sovereign Node MCP server directly via `npx` — no installation required!
+
+### 1. Claude Desktop Setup
+Add this to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "sovereign-node": {
+      "command": "npx",
+      "args": ["-y", "@aipp/sovereign-node-mcp"],
+      "env": {
+        "SOVEREIGN_NODE_URL": "https://node.sovroute.com",
+        "ALBY_NWC_URL": "nostr+walletconnect://..."
+      }
+    }
+  }
+}
 ```
-[ Domain Layer ] (Pure Business Rules, Zero-Trust Zod Schemas, Atomic Satoshis)
-       ▲
-       │
-[ Application Layer ] (L402 Verification, Node Truth Orchestration, DTOs)
-       ▲
-       │
-[ Infrastructure & Transport Layer ] (Bitcoin Core 31.1 RPC, LND 0.21.3 gRPC, Express L402 Middleware)
-```
+*(Note: `ALBY_NWC_URL` or `PHOENIXD_PASSWORD` is optional if your agent autonomously settles L402 pay-per-call queries via satoshis).*
 
-1. **Domain Katmanı (`src/domain`):**
-   * Hiçbir harici framework'e bağımlı olmayan saf TypeScript tipleri.
-   * `Satoshi` branded primitive (Kayan noktalı sayı yasağı, atomik tam sayılar).
-   * L402 Challenge, Macaroon Caveats ve Verifiable Node Attestation Zod şemaları.
-2. **Application Katmanı (`src/application`):**
-   * `L402Service`: SHA-256 Preimage doğrulaması (`H = SHA-256(R)`) ve meydan okuma orkestrasyonu.
-   * `NodeTruthService`: Mempool entropisi ve blok başlığı veri akışı.
-3. **Infrastructure & Transport Katmanı (`src/infrastructure`, `src/interfaces`):**
-   * `BitcoinRpcAdapter`: Tailscale üzerinden bare-metal `sovereign-bitcoind:31.1` RPC entegrasyonu.
-   * `LndGatewayAdapter`: `sovereign-lnd:0.21.3` fatura oluşturma ve mutabakat kontrolü.
-   * `createL402Middleware`: HTTP 402 Payment Required protokol middleware'i.
+### 2. Cursor IDE Setup
+Add to your `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "sovereign-node": {
+      "command": "npx",
+      "args": ["-y", "@aipp/sovereign-node-mcp"]
+    }
+  }
+}
+```
 
 ---
 
-## ⚡ Canlı Uç Noktalar (Endpoints)
+## 🛠️ Available MCP Tools
 
-| Endpoint | Erişim | Protokol | Açıklama |
+| Tool | Category | Price | Description |
 | :--- | :--- | :--- | :--- |
-| `GET /health` | Herkese Açık | JSON | Düğüm ve servis sağlık durumu |
-| `GET /v1/truth/mempool` | L402 Korumalı (5 sats) | HTTP 402 / BOLT-11 | Canlı Mempool Entropisi (Tx sayısı, Vsize, Sıkışıklık Seviyesi) |
-| `GET /v1/truth/block` | L402 Korumalı (5 sats) | HTTP 402 / BOLT-11 | Bitcoin Mainnet güncel blok başlığı ve hash verisi |
-| `GET /v1/truth/topology` | L402 Korumalı (10 sats) | HTTP 402 / BOLT-11 | Lightning Network dedikodu ve rotalama topolojisi |
+| `get_next_block_xray` | Forensics | 3 sats / $0.003 | Inspects live `getblocktemplate` candidate block. Reveals cutoff fee rate (sat/vB), block fill %, and exact queue rank (`GUARANTEED_NEXT_BLOCK` vs `QUEUED_FOR_LATER`). |
+| `simulate_raw_transaction` | Simulation | 5 sats / $0.005 | Zero-broadcast dry-run consensus validator (`testmempoolaccept`). Simulates scripts & UTXO rules with **0% P2P network broadcast**. |
+| `check_rbf_fraud_shield` | Security | 5 sats / $0.005 | 0-Conf RBF double-spend fraud shield. Inspects BIP-125 signaling, unconfirmed ancestor chains, and conflicting spends. |
+| `get_bitcoin_smart_fees` | Fee Oracle | 1 sat / $0.001 | Real-time `estimatesmartfee` projections (sat/vB) for fastest (1–2 blocks) and economic (6 blocks) confirmation targets. |
+| `get_mempool_entropy` | Network State | 2 sats / $0.002 | Unconfirmed tx count, virtual backlog (vsizeBytes), total fee pool in sats, and dynamic congestion rating. |
+| `verify_block_header` | Chain Truth | 1 sat / $0.001 | Latest verified Bitcoin Mainnet tip height, block hash, difficulty, and timestamp from bare-metal Core v31.1. |
+| `pay_lightning_invoice` | Settlement | Free tool | Autonomously pays any BOLT-11 invoice via your configured Lightning wallet and returns cryptographic preimage. |
 
 ---
 
-## 🧪 Testler ve Doğrulama
+## 🏛️ Architecture & Verification
 
-```bash
-# Tüm birim ve canlı düğüm testlerini çalıştır:
-npm test
-```
+* **Live Node Gateway:** `https://node.sovroute.com`
+* **Machine-Readable OpenAPI 3.1 Spec:** `https://node.sovroute.com/openapi.json`
+* **Agent Context & Guidance:** `https://node.sovroute.com/llms.txt`
+* **Circle for Agents Score:** `100/100 Grade A (Runtime-verified)`
+* **Satring Directory:** `#1097 [domain verified]`
 
-* Tüm testler sıfır hata ile geçmektedir (Zod doğrulamaları + Tailscale üzerinden canlı Bitcoin Core Mainnet sorguları).
+---
+
+## 📄 License
+MIT License. Created by [SovRoute](https://sovroute.com) & [aipp](https://aipp.dev).
