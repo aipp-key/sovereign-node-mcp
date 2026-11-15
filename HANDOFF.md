@@ -156,9 +156,20 @@ TaskFuel kataloğundaki *"Crypto & Prediction Markets -> Read the Blockchain"* k
     * 3. `POST /v1/chain/btc/simulate-tx` ($0.005 Base USDC / 5,000 atomic units) → **`200 OK`** (TXID: `8fd011bc...`, `consensusAllowed: true`, `alreadyInMempool: true`, `broadcastedToNetwork: false`, Vsize: `1225 vB`).
     * **Sonuç:** Dual-Rail (L402 Lightning + x402 Base USDC) iki rayda da **gerçek cüzdanlar ve canlı Mainnet parasıyla %100 doğrulandı!**
 
+* [x] **Satring.com Ajan Pazar Yeri Kaydı & Doğrulanmış Alan Adı (15 Kasım 2026):**
+  * Phoenixd Lightning düğümümüz üzerinden `1,000 sats` L402 ücreti ödenerek servis Satring dizinine eklendi:
+    * **Satring ID:** `1097` (Slug: `sovereign-node-engine`)
+    * **Canlı Sayfa:** `https://satring.com/services/sovereign-node-engine`
+    * **Protokoller:** `L402+x402` (Dual-Rail)
+    * **Kategoriler:** `data` (ID: 2) & `finance` (ID: 3)
+    * **Edit Token:** `rV7ZBZoaIVuqLFRrerITrJByl-Uoo167rm8TSXh0-vg`
+  * **Alan Adı Doğrulaması (`domain_verified: true`):**
+    * Challenge: `04e3f3cfac762dce67f536076ec25f7b3e1f03bfca92275991a6403a3712447f`
+    * `https://node.sovroute.com/.well-known/satring-verify` ucuna yerleştirildi ve Satring tarafından doğrulanarak **"Domain Verified"** yeşil rozeti kazanıldı.
+
 ### 🎯 Sıradaki Eylem Sırası:
-1. **TaskFuel / Moritz Kaminski E-postası:** Hem Lightning hem Base USDC canlı cüzdan testleri %100 başarıyla kanıtlandığı için Bölüm 3'teki dondurulmuş İngilizce e-posta Moritz'e gönderilmeye hazır.
-2. **Diğer `x402` / `L402` / `MCP` Pazar Yerlerine Dağıtım:** TaskFuel sonrasında **Satring**, **Coinbase x402 Bazaar** (`/.well-known/x402` dahil), **x402.new**, **PayAI Network**, **Circle Agent Marketplace** ve **MCP dizinleri (`Smithery.ai`, `Glama.ai`)** kayıtları tamamlanacak.
+1. **TaskFuel / Moritz Kaminski E-postası:** Hem Lightning hem Base USDC canlı cüzdan testleri %100 başarıyla kanıtlandığı ve Satring listelemesi tamamlandığı için Bölüm 3'teki dondurulmuş İngilizce e-posta Moritz'e gönderilmeye hazır.
+2. **Diğer `x402` / `L402` / `MCP` Pazar Yerlerine Dağıtım:** TaskFuel sonrasında **Coinbase x402 Bazaar** (`/.well-known/x402` dahil), **x402.new**, **PayAI Network**, **Circle Agent Marketplace** ve **MCP dizinleri (`Smithery.ai`, `Glama.ai`)** kayıtları tamamlanacak.
 
 ---
 
