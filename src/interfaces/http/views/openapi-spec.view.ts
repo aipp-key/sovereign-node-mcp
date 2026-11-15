@@ -22,7 +22,7 @@ const DUAL_RAIL_PAYMENT = (amountUsd: string, priceSats: number) => ({
 });
 
 const RESPONSE_402 = {
-  description: 'Dual-Rail Payment Required (L402 Lightning BOLT-11 + Base USDC x402 + Circle Gateway Nanopayments)',
+  description: 'Dual-Rail Payment Required (L402 Lightning BOLT-11 + Base USDC x402)',
 };
 
 export function renderOpenApiSpec(): Record<string, unknown> {
@@ -34,9 +34,9 @@ export function renderOpenApiSpec(): Record<string, unknown> {
       summary:
         '0-Conf RBF Double-Spend Fraud Shield, Next-Block Miner Template X-Ray, and Zero-Broadcast Consensus Simulator via Native Lightning (L402) & Base USDC (x402).',
       description:
-        'Zero-trust Bitcoin Mainnet intelligence extracted directly from bare-metal Bitcoin Core v31.1 with 0.04ms in-memory caching. Supports Dual-Rail HTTP 402 settlement: pay in satoshis over Lightning Network (L402) or in USDC on Base L2 (x402) with Circle Gateway Nanopayments.',
+        'Zero-trust Bitcoin Mainnet intelligence extracted directly from bare-metal Bitcoin Core v31.1 with 0.04ms in-memory caching. Supports Dual-Rail HTTP 402 settlement: pay in satoshis over Lightning Network (L402) or in USDC on Base L2 (x402).',
       'x-guidance':
-        'Autonomous AI agent guide for Sovereign Node Engine: Query real-time Bitcoin Core v31.1 mempool forensics, 0-confirmation RBF double-spend fraud screening, and next-block miner candidate templates. All paid endpoints support Dual-Rail settlement: L402 Lightning Network (1-5 satoshis via BOLT-11 invoice or Alby NWC) and x402 / Circle Gateway Nanopayments (EIP-3009 signed authorization in USDC, gas-free). To pay via x402 or Circle Gateway, make an initial request to obtain HTTP 402 with the PAYMENT-REQUIRED header, sign the EIP-3009 payment authorization with your EVM wallet, and repeat the request with PAYMENT-SIGNATURE: <base64>.',
+        'Autonomous AI agent guide for Sovereign Node Engine: Query real-time Bitcoin Core v31.1 mempool forensics, 0-confirmation RBF double-spend fraud screening, and next-block miner candidate templates. All paid endpoints support Dual-Rail settlement: L402 Lightning Network (1-5 satoshis via BOLT-11 invoice or Alby NWC) and x402 (EIP-3009 signed authorization in Base USDC, gas-free). To pay via x402, make an initial request to obtain HTTP 402 with the PAYMENT-REQUIRED header, sign the EIP-3009 payment authorization with your EVM wallet, and repeat the request with PAYMENT-SIGNATURE: <base64>.',
       contact: {
         email: 'contact@sovroute.com',
         url: 'https://node.sovroute.com',

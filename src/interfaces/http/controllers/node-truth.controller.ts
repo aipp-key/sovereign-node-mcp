@@ -155,7 +155,7 @@ export function createNodeTruthRouter(
       name_for_model: 'sovereign_node_engine',
       name_for_human: 'Sovereign Node Engine',
       description_for_model:
-        'Query bare-metal Bitcoin Core v31.1 mempool forensics, 0-conf RBF double-spend fraud screening, and next-block miner candidate templates via Dual-Rail L402 Lightning and x402 Base USDC / Circle Gateway Nanopayments.',
+        'Query bare-metal Bitcoin Core v31.1 mempool forensics, 0-conf RBF double-spend fraud screening, and next-block miner candidate templates via Dual-Rail L402 Lightning and x402 Base USDC.',
       description_for_human: 'Bare-metal Bitcoin Core v31.1 & Dual-Rail Settlement Engine for AI Agents.',
       auth: { type: 'none' },
       api: { type: 'openapi', url: 'https://node.sovroute.com/openapi.json' },

@@ -634,13 +634,13 @@ export function createL402Middleware(
 
       return res.status(402).json({
         statusCode: 402,
-        protocol: 'Dual-Rail (L402 Lightning + x402 Base USDC + Circle Gateway Nanopayments + MPP)',
+        protocol: 'Dual-Rail (L402 Lightning + x402 Base USDC)',
         protocols: ['x402', 'mpp', 'l402'],
         circleGateway: true,
         x402Version: 2,
         error: 'Payment required',
         message:
-          'Payment Required: Settle instantly via Lightning Network (L402 BOLT-11 invoice), Base L2 USDC (x402), or Circle Gateway Nanopayments.',
+          'Payment Required: Settle instantly via Lightning Network (L402 BOLT-11 invoice) or Base L2 USDC (x402).',
         price: usdDisplay,
         priceSats: challenge.priceSats,
         resource: {
