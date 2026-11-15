@@ -40,7 +40,7 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
   server: McpServer;
   start: () => Promise<void>;
 } {
-  const sovereignNodeUrl = config.sovereignNodeUrl || process.env.SOVEREIGN_NODE_URL || 'http://100.95.119.88:3088';
+  const sovereignNodeUrl = config.sovereignNodeUrl || process.env.SOVEREIGN_NODE_URL || 'https://node.sovroute.com';
   const maxPriceSats = config.maxPriceSatsAllowed || Number(process.env.MAX_PRICE_SATS_ALLOWED) || 10;
 
   const payer =
@@ -264,6 +264,74 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
         return {
           isError: true,
           content: [{ type: 'text', text: `Failed to pay Lightning invoice: ${error.message}` }],
+        };
+      }
+    }
+  );
+
+  // Tool 6: get_next_block_xray
+  server.tool(
+    'get_next_block_xray',
+    'Inspect live candidate block template from bare-metal Bitcoin Core v31.1 getblocktemplate to reveal cutoff fee rates and exact tx queue rank (GUARANTEED_NEXT_BLOCK vs QUEUED_FOR_LATER).',
+    {
+      txid: z.string().length(64).optional().describe('Optional 64-character hex Bitcoin transaction ID to inspect for inclusion rank'),
+    },
+    async ({ txid }) => {
+      try {
+        if (!agent) {
+          return {
+            isError: true,
+            content: [{ type: 'text', text: 'Error: No Lightning payer configured on this agent.' }],
+          };
+        }
+
+        const url = txid
+          ? `${sovereignNodeUrl}/v1/chain/btc/next-block-xray?txid=${txid}`
+          : `${sovereignNodeUrl}/v1/chain/btc/next-block-xray`;
+
+        const data = await agent.fetch(url, { maxPriceSatsAllowed: maxPriceSats });
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error: any) {
+        return {
+          isError: true,
+          content: [{ type: 'text', text: `Failed to inspect next-block template: ${error.message}` }],
+        };
+      }
+    }
+  );
+
+  // Tool 7: simulate_raw_transaction
+  server.tool(
+    'simulate_raw_transaction',
+    'Execute zero-broadcast dry-run consensus & script validation (testmempoolaccept) against live Bitcoin Core v31.1 UTXO set without broadcasting to P2P network.',
+    {
+      rawTxHex: z.string().describe('Hexadecimal signed raw Bitcoin transaction to simulate against consensus rules'),
+    },
+    async ({ rawTxHex }) => {
+      try {
+        if (!agent) {
+          return {
+            isError: true,
+            content: [{ type: 'text', text: 'Error: No Lightning payer configured on this agent.' }],
+          };
+        }
+
+        const data = await agent.fetch(`${sovereignNodeUrl}/v1/chain/btc/simulate-tx`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rawTxHex }),
+          maxPriceSatsAllowed: maxPriceSats,
+        });
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error: any) {
+        return {
+          isError: true,
+          content: [{ type: 'text', text: `Failed to simulate transaction: ${error.message}` }],
         };
       }
     }
