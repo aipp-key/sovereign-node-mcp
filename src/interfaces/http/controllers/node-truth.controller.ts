@@ -145,8 +145,24 @@ export function createNodeTruthRouter(
     res.send(renderLlmsTxt());
   });
 
-  router.get('/openapi.json', (_req: Request, res: Response) => {
+  router.get(['/openapi.json', '/.well-known/openapi.json'], (_req: Request, res: Response) => {
     res.json(renderOpenApiSpec());
+  });
+
+  router.get('/.well-known/ai-plugin.json', (_req: Request, res: Response) => {
+    res.json({
+      schema_version: 'v1',
+      name_for_model: 'sovereign_node_engine',
+      name_for_human: 'Sovereign Node Engine',
+      description_for_model:
+        'Query bare-metal Bitcoin Core v31.1 mempool forensics, 0-conf RBF double-spend fraud screening, and next-block miner candidate templates via Dual-Rail L402 Lightning and x402 Base USDC / Circle Gateway Nanopayments.',
+      description_for_human: 'Bare-metal Bitcoin Core v31.1 & Dual-Rail Settlement Engine for AI Agents.',
+      auth: { type: 'none' },
+      api: { type: 'openapi', url: 'https://node.sovroute.com/openapi.json' },
+      logo_url: 'https://node.sovroute.com/favicon.ico',
+      contact_email: 'contact@sovroute.com',
+      legal_info_url: 'https://node.sovroute.com',
+    });
   });
 
   router.get('/mcp-config.json', (_req: Request, res: Response) => {
@@ -236,6 +252,24 @@ export function createNodeTruthRouter(
       resourceName: 'rbf-shield',
       description:
         '0-Conf Bitcoin RBF double-spend fraud oracle: inspects BIP-125 signaling, conflicting spends, ancestor package fee rate, and UTXO confirmation status.',
+      schema: {
+        input: {
+          path: { txid: '64-character hexadecimal Bitcoin transaction ID' },
+        },
+        output: {
+          source: 'string',
+          paymentRail: 'string',
+          data: {
+            txid: 'string',
+            isInMempool: 'boolean',
+            confirmations: 'number',
+            bip125Replaceable: 'boolean',
+            feeRateSatPerVb: 'number',
+            zeroConfRiskLevel: 'SAFE | MEDIUM_RISK | HIGH_RISK_RBF_ENABLED',
+            recommendation: 'string',
+          },
+        },
+      },
     }),
     async (req: Request, res: Response) => {
       const rawTxid = req.params.txid;
@@ -322,6 +356,24 @@ export function createNodeTruthRouter(
       resourceName: 'next-block-xray',
       description:
         'Live Bitcoin Core v31.1 getblocktemplate X-Ray: exact candidate block cutoff fee rate, total fees, whale transactions, and exact queue rank for any txid.',
+      schema: {
+        input: {
+          query: { txid: 'optional 64-character hexadecimal Bitcoin transaction ID' },
+        },
+        output: {
+          source: 'string',
+          paymentRail: 'string',
+          data: {
+            candidateBlockHeight: 'number',
+            totalTransactions: 'number',
+            cutoffFeeRateSatPerVb: 'number',
+            medianFeeRateSatPerVb: 'number',
+            topFeeRateSatPerVb: 'number',
+            rankInBlock: 'number (optional if txid provided)',
+            inclusionVerdict: 'GUARANTEED_NEXT_BLOCK | QUEUED_FOR_LATER_BLOCK (optional)',
+          },
+        },
+      },
     }),
     async (req: Request, res: Response) => {
       const rawParam = req.params.txid || (req.query.txid as string | undefined);
@@ -351,6 +403,23 @@ export function createNodeTruthRouter(
       resourceName: 'simulate-tx-consensus',
       description:
         'Zero-Broadcast Bitcoin Core v31.1 testmempoolaccept consensus & script dry-run simulator. Never broadcasts to P2P network.',
+      schema: {
+        input: {
+          body: { rawTxHex: 'Even-length hexadecimal signed raw Bitcoin transaction (100-200000 chars)' },
+        },
+        output: {
+          source: 'string',
+          paymentRail: 'string',
+          data: {
+            txid: 'string',
+            consensusAllowed: 'boolean',
+            rejectReason: 'string | null',
+            vsize: 'number',
+            feeRateSatPerVb: 'number | null',
+            broadcastedToNetwork: false,
+          },
+        },
+      },
     }),
     async (req: Request, res: Response) => {
       try {

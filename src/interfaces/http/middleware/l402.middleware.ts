@@ -13,6 +13,10 @@ export const BASE_PAY_TO_ADDRESS =
   process.env.BASE_PAY_TO_ADDRESS || '0x488cbDad29E60d8Bae53FFF4c4252C9711dF9784';
 export const BASE_USDC_CONTRACT =
   process.env.BASE_USDC_CONTRACT || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+export const CIRCLE_GATEWAY_CONTRACT =
+  process.env.CIRCLE_GATEWAY_CONTRACT || '0x77777777dcc4d5a8b6e418fd04d8997ef11000ee';
+export const CIRCLE_GATEWAY_FACILITATOR_URL =
+  process.env.CIRCLE_GATEWAY_FACILITATOR_URL || 'https://gateway-api.circle.com/v1/x402';
 export const X402_FACILITATOR_URL =
   process.env.X402_FACILITATOR_URL || 'https://facilitator.payai.network';
 
@@ -60,7 +64,7 @@ export async function verifyAndSettleX402Payment(params: {
   requirement: ReturnType<typeof buildX402Requirement>;
   requiredPriceSats?: number;
 }): Promise<
-  | { ok: true; txHash?: string; replayKey: string; recovered?: boolean }
+  | { ok: true; txHash?: string; replayKey: string; recovered?: boolean; isCircleGateway?: boolean }
   | { ok: false; error: string; details: string }
 > {
   const { parsedX402, auth, signature, requiredAtomic, requirement, requiredPriceSats } = params;
@@ -171,26 +175,36 @@ export async function verifyAndSettleX402Payment(params: {
 
   inFlightX402Nonces.add(replayKey);
   try {
-    try {
-      const balance = await basePublicClient.readContract({
-        address: BASE_USDC_CONTRACT as `0x${string}`,
-        abi: USDC_BALANCE_ABI,
-        functionName: 'balanceOf',
-        args: [auth.from as `0x${string}`],
-      });
-      if (balance < requiredAtomic) {
+    const isCircleGateway =
+      requirement?.extra?.name === 'GatewayWalletBatched' ||
+      parsedX402?.accepted?.extra?.name === 'GatewayWalletBatched' ||
+      (typeof auth?.verifyingContract === 'string' &&
+        auth.verifyingContract.toLowerCase() === CIRCLE_GATEWAY_CONTRACT.toLowerCase()) ||
+      (typeof parsedX402?.accepted?.extra?.verifyingContract === 'string' &&
+        parsedX402.accepted.extra.verifyingContract.toLowerCase() === CIRCLE_GATEWAY_CONTRACT.toLowerCase());
+
+    if (!isCircleGateway) {
+      try {
+        const balance = await basePublicClient.readContract({
+          address: BASE_USDC_CONTRACT as `0x${string}`,
+          abi: USDC_BALANCE_ABI,
+          functionName: 'balanceOf',
+          args: [auth.from as `0x${string}`],
+        });
+        if (balance < requiredAtomic) {
+          return {
+            ok: false,
+            error: 'x402 Insufficient Base USDC Balance',
+            details: `Payer ${auth.from} has ${balance.toString()} atomic USDC on Base Mainnet; ${requiredAtomic.toString()} required.`,
+          };
+        }
+      } catch (err: any) {
         return {
           ok: false,
-          error: 'x402 Insufficient Base USDC Balance',
-          details: `Payer ${auth.from} has ${balance.toString()} atomic USDC on Base Mainnet; ${requiredAtomic.toString()} required.`,
+          error: 'x402 Balance Check Failed',
+          details: err?.message || 'Unable to verify Base Mainnet USDC balance.',
         };
       }
-    } catch (err: any) {
-      return {
-        ok: false,
-        error: 'x402 Balance Check Failed',
-        details: err?.message || 'Unable to verify Base Mainnet USDC balance.',
-      };
     }
 
     try {
@@ -215,7 +229,11 @@ export async function verifyAndSettleX402Payment(params: {
         payload: parsedX402.payload || { authorization: auth, signature },
       };
 
-      const settleRes = await fetch(`${X402_FACILITATOR_URL}/settle`, {
+      const facilitatorEndpoint = isCircleGateway
+        ? `${CIRCLE_GATEWAY_FACILITATOR_URL}/settle`
+        : `${X402_FACILITATOR_URL}/settle`;
+
+      const settleRes = await fetch(facilitatorEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: AbortSignal.timeout(10000),
@@ -235,16 +253,21 @@ export async function verifyAndSettleX402Payment(params: {
       if (!settleRes.ok || settleJson?.success === false) {
         return {
           ok: false,
-          error: 'x402 Settlement Failed',
+          error: isCircleGateway ? 'Circle Gateway Nanopayment Settlement Failed' : 'x402 Settlement Failed',
           details: settleJson?.error || settleJson?.errorReason || `Facilitator returned HTTP ${settleRes.status}`,
         };
       }
       addBoundedSetEntry(consumedX402Nonces, replayKey);
-      return { ok: true, txHash: settleJson?.transaction || settleJson?.txHash, replayKey };
+      return {
+        ok: true,
+        txHash: settleJson?.transaction || settleJson?.txHash || (isCircleGateway ? 'circle-gateway-settled' : undefined),
+        replayKey,
+        isCircleGateway,
+      };
     } catch (err: any) {
       return {
         ok: false,
-        error: 'x402 Settlement Error',
+        error: isCircleGateway ? 'Circle Gateway Nanopayment Error' : 'x402 Settlement Error',
         details: err?.message || 'Failed to settle x402 payment with facilitator.',
       };
     }
@@ -259,6 +282,10 @@ export interface L402MiddlewareOptions {
   priceUsdDisplay?: string; // e.g. "$0.001"
   resourceName: string;
   description?: string;
+  schema?: {
+    input?: Record<string, unknown>;
+    output?: Record<string, unknown>;
+  };
 }
 
 export const DUAL_RAIL_CORS_HEADERS: Record<string, string> = {
@@ -314,6 +341,30 @@ function buildX402Requirement(
     extra: {
       name: 'USD Coin',
       version: '2',
+    },
+  };
+}
+
+function buildCircleGatewayRequirement(
+  resourceUrl: string,
+  description: string,
+  usdcAtomic: string
+) {
+  return {
+    scheme: 'exact',
+    network: 'eip155:8453',
+    amount: usdcAtomic,
+    maxAmountRequired: usdcAtomic,
+    resource: resourceUrl,
+    description,
+    mimeType: 'application/json',
+    asset: BASE_USDC_CONTRACT,
+    payTo: BASE_PAY_TO_ADDRESS,
+    maxTimeoutSeconds: 604900,
+    extra: {
+      name: 'GatewayWalletBatched',
+      version: '1',
+      verifyingContract: CIRCLE_GATEWAY_CONTRACT,
     },
   };
 }
@@ -463,18 +514,21 @@ export function createL402Middleware(
 
       res.setHeader('Payment-Response', settlementReceipt);
       res.setHeader('X-Payment-Response', settlementReceipt);
-      (req as any).paymentRail = 'X402-BASE-USDC';
+      const paymentRail = (x402Check as any).isCircleGateway
+        ? 'X402-CIRCLE-NANOPAYMENT'
+        : 'X402-BASE-USDC';
+      (req as any).paymentRail = paymentRail;
       attachPostPaymentFailureGuard(res, {
         replayKey: x402Check.replayKey,
         priceSats: options.priceSats,
-        rail: 'X402-BASE-USDC',
+        rail: paymentRail,
         txHash: x402Check.txHash,
       });
       return next();
     }
 
     // -------------------------------------------------------------------------
-    // Case 3: No credentials -> Issue Dual-Rail 402 Challenge (L402 + x402)
+    // Case 3: No credentials -> Issue Dual-Rail 402 Challenge (L402 + x402 + Circle Nanopayments)
     // -------------------------------------------------------------------------
     try {
       const challenge = await l402Service.generateChallenge(
@@ -483,6 +537,7 @@ export function createL402Middleware(
       );
 
       const x402Requirement = buildX402Requirement(fullResourceUrl, description, usdcAtomic);
+      const circleGatewayRequirement = buildCircleGatewayRequirement(fullResourceUrl, description, usdcAtomic);
       const l402Requirement = {
         scheme: 'l402',
         network: 'lightning:mainnet',
@@ -504,7 +559,7 @@ export function createL402Middleware(
           serviceName: 'Sovereign Node Engine',
         },
         price: usdDisplay,
-        accepts: [x402Requirement, l402Requirement],
+        accepts: [x402Requirement, circleGatewayRequirement, l402Requirement],
       };
 
       const base64X402Header = Buffer.from(JSON.stringify(x402HeaderPayload)).toString('base64');
@@ -514,15 +569,15 @@ export function createL402Middleware(
         `L402 macaroon="${challenge.macaroon}", invoice="${challenge.invoice}"`
       );
       res.setHeader('Payment-Required', base64X402Header);
-      res.setHeader('X-Payment-Requirements', 'L402, x402');
+      res.setHeader('X-Payment-Requirements', 'L402, x402, Circle-Gateway-Nanopayments');
 
       return res.status(402).json({
         statusCode: 402,
-        protocol: 'Dual-Rail (L402 Lightning + x402 Base USDC)',
+        protocol: 'Dual-Rail (L402 Lightning + x402 Base USDC + Circle Gateway Nanopayments)',
         x402Version: 2,
         error: 'Payment required',
         message:
-          'Payment Required: Settle instantly via Lightning Network (L402 BOLT-11 invoice) OR Base L2 USDC (x402).',
+          'Payment Required: Settle instantly via Lightning Network (L402 BOLT-11 invoice), Base L2 USDC (x402), or Circle Gateway Nanopayments.',
         price: usdDisplay,
         priceSats: challenge.priceSats,
         resource: {
@@ -531,7 +586,11 @@ export function createL402Middleware(
           mimeType: 'application/json',
           serviceName: 'Sovereign Node Engine',
         },
-        accepts: [x402Requirement, l402Requirement],
+        schema: options.schema || {
+          input: { description: 'Request payload or parameters' },
+          output: { description: 'Cryptographic node response' },
+        },
+        accepts: [x402Requirement, circleGatewayRequirement, l402Requirement],
         challenge: {
           macaroon: challenge.macaroon,
           priceSats: challenge.priceSats,
@@ -543,6 +602,7 @@ export function createL402Middleware(
           rail1_lightning_l402:
             'Pay the BOLT-11 invoice over Lightning Network (or via Alby Hub NWC) and repeat request with header: "Authorization: L402 <macaroon>:<preimage>".',
           rail2_base_x402: `Sign an EIP-3009 USDC authorization on Base (eip155:8453) for ${usdDisplay} (${usdcAtomic} atomic units) to ${BASE_PAY_TO_ADDRESS} and repeat request with header: "Payment-Signature: <base64_x402_payload>".`,
+          rail3_circle_nanopayments: `Sign a gasless Circle Gateway Nanopayment authorization against verifyingContract ${CIRCLE_GATEWAY_CONTRACT} and repeat request with header: "Payment-Signature: <base64_x402_payload>".`,
         },
       });
     } catch (err: any) {
