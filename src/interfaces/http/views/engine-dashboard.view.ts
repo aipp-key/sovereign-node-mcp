@@ -256,9 +256,9 @@ export function renderEngineDashboardHtml(): string {
             }
         }
 
-        @media (min-width: 768px) {
+        @media (min-width: 992px) {
             .teaser-metrics-grid {
-                grid-template-columns: repeat(4, 1fr);
+                grid-template-columns: repeat(3, 1fr);
             }
         }
 
@@ -305,24 +305,39 @@ export function renderEngineDashboardHtml(): string {
             line-height: 1.4;
         }
 
+        .price-badge-group {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
         .price-badge {
             display: inline-block;
-            margin-top: 4px;
             font-family: ui-monospace, SFMono-Regular, monospace;
             font-size: 0.6875rem;
             font-weight: 700;
             padding: 2px 8px;
             border-radius: 6px;
-            background-color: rgba(247, 147, 26, 0.1);
-            color: #d97706;
-            border: 1px solid rgba(247, 147, 26, 0.25);
             width: fit-content;
+        }
+
+        .price-ln {
+            background-color: rgba(247, 147, 26, 0.12);
+            color: #d97706;
+            border: 1px solid rgba(247, 147, 26, 0.28);
+        }
+
+        .price-usdc {
+            background-color: rgba(37, 99, 235, 0.08);
+            color: #2563eb;
+            border: 1px solid rgba(37, 99, 235, 0.25);
         }
 
         .price-free {
             background-color: #ecfdf5;
             color: #059669;
-            border-color: #a7f3d0;
+            border: 1px solid #a7f3d0;
         }
 
         /* Terminal Window Inside Showcase (Exact sovroute.com DNA) */
@@ -439,13 +454,15 @@ export function renderEngineDashboardHtml(): string {
                 <img src="https://sovroute.com/assets/sovroute-logo.png" alt="SovRoute Logo" class="hero-brand-logo">
                 <h1 class="logo">Sovereign Node Engine</h1>
             </div>
-            <span class="eyebrow">sovereign bitcoin mainnet &amp; lightning node infrastructure</span>
-            <p class="hero-desc">Trust-minimized, direct-from-node blockchain intelligence. Real-time Bitcoin mempool fee recommendations, chain tip verification, and global Lightning Network topology queryable on-the-fly via HTTP 402.</p>
-            <p class="hero-sub">direct bitcoind + phoenixd rpc &middot; pay-per-call (1-5 sats) &middot; native l402 lightning &middot; zero account requirement</p>
+            <span class="eyebrow">sovereign bitcoin core v31.1 &amp; dual-rail settlement (l402 + x402)</span>
+            <p class="hero-desc">Trust-minimized, direct-from-node Bitcoin forensics &amp; consensus simulation. Real-time BIP-125 RBF double-spend screening, candidate block template X-Ray, zero-broadcast consensus dry-run, and mempool entropy queryable on-the-fly via HTTP 402.</p>
+            <p class="hero-sub">direct bitcoind v31.1 rpc &middot; dual-rail (lightning l402 + base usdc x402) &middot; zero account requirement &middot; &lt;0.05ms cache</p>
             
             <div class="cta-group">
                 <a href="#endpoints" class="btn btn-primary">Explore Endpoints &rarr;</a>
-                <a href="#quickstart" class="btn btn-secondary">cURL &amp; Agent Quickstart</a>
+                <a href="/omni-test" class="btn btn-secondary" style="border-color: #2563eb; color: #2563eb; font-weight: 600;">⚡ Live Wallet Console (/omni-test)</a>
+                <a href="/openapi.json" class="btn btn-secondary" target="_blank">OpenAPI 3.1 Spec</a>
+                <a href="/llms.txt" class="btn btn-secondary" target="_blank">llms.txt</a>
                 <a href="https://sovroute.com" class="btn btn-secondary" target="_blank">Main Gateway (sovroute.com) &rarr;</a>
             </div>
         </header>
@@ -462,9 +479,9 @@ export function renderEngineDashboardHtml(): string {
                         <span class="teaser-rate">Bitcoind 31.1 &amp; Phoenixd Synced (&lt;0.05 ms cache)</span>
                     </div>
 
-                    <h2 class="teaser-title">Verified On-Chain &amp; Lightning Intelligence</h2>
+                    <h2 class="teaser-title">Verified Bitcoin Forensics &amp; Dual-Rail Intelligence</h2>
                     <p class="teaser-desc">
-                        Built for autonomous AI agents requiring instantaneous Bitcoin fee estimates, 0-conf fraud screening, and deep mempool entropy without subscriptions.
+                        Built for autonomous AI agents requiring instantaneous 0-conf double-spend fraud screening, live candidate block cutoff fee rates, zero-broadcast consensus simulation, and deep mempool entropy.
                     </p>
 
                     <div class="teaser-metrics-grid">
@@ -473,39 +490,63 @@ export function renderEngineDashboardHtml(): string {
                             <div class="metric-icon">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                             </div>
-                            <div class="metric-title">/v1/truth/rbf-shield</div>
-                            <div class="metric-sub">0-Conf double-spend fraud shield (BIP-125)</div>
-                            <span class="price-badge">5 sats</span>
+                            <div class="metric-title">/v1/chain/btc/rbf-shield/:txid</div>
+                            <div class="metric-sub">0-Conf BIP-125 RBF double-spend fraud shield, ancestor package fee rate &amp; UTXO confirmation check</div>
+                            <div class="price-badge-group">
+                                <span class="price-badge price-ln">5 sats L402</span>
+                                <span class="price-badge price-usdc">$0.005 Base USDC</span>
+                            </div>
                         </div>
 
-                        <!-- Metric 2: Mempool Entropy -->
+                        <!-- Metric 2: Next-Block X-Ray -->
                         <div class="teaser-metric">
                             <div class="metric-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" style="fill: #f59e0b;"/></svg>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
                             </div>
-                            <div class="metric-title">/v1/truth/mempool</div>
-                            <div class="metric-sub">Live 60k+ pool backlog &amp; dynamic congestion</div>
-                            <span class="price-badge">2 sats</span>
+                            <div class="metric-title">/v1/chain/btc/next-block-xray</div>
+                            <div class="metric-sub">Live miner candidate block template (<code>getblocktemplate</code>) cutoff fee rate, whale transactions &amp; queue rank</div>
+                            <div class="price-badge-group">
+                                <span class="price-badge price-ln">3 sats L402</span>
+                                <span class="price-badge price-usdc">$0.003 Base USDC</span>
+                            </div>
                         </div>
 
-                        <!-- Metric 3: Fees -->
+                        <!-- Metric 3: Simulate-TX -->
                         <div class="teaser-metric">
                             <div class="metric-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M8 10h8"/></svg>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                             </div>
-                            <div class="metric-title">/v1/truth/fees</div>
-                            <div class="metric-sub">Real-time estimatesmartfee (1, 3, 6 blocks)</div>
-                            <span class="price-badge">1 sat</span>
+                            <div class="metric-title">/v1/chain/btc/simulate-tx</div>
+                            <div class="metric-sub">Zero-broadcast (<strong style="color:#10b981;">0% P2P leak</strong>) Bitcoin Core v31.1 consensus &amp; script dry-run simulator</div>
+                            <div class="price-badge-group">
+                                <span class="price-badge price-ln">5 sats L402</span>
+                                <span class="price-badge price-usdc">$0.005 Base USDC</span>
+                            </div>
                         </div>
 
-                        <!-- Metric 4: Health / Tip -->
+                        <!-- Metric 4: Mempool Entropy -->
+                        <div class="teaser-metric">
+                            <div class="metric-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" style="fill: #10b981;"/></svg>
+                            </div>
+                            <div class="metric-title">/v1/chain/btc/mempool</div>
+                            <div class="metric-sub">Deep mempool backlog entropy, live fee pressure tiers &amp; dynamic congestion engine</div>
+                            <div class="price-badge-group">
+                                <span class="price-badge price-ln">2 sats L402</span>
+                                <span class="price-badge price-usdc">$0.002 Base USDC</span>
+                            </div>
+                        </div>
+
+                        <!-- Metric 5: Health / Tip -->
                         <div class="teaser-metric">
                             <div class="metric-icon">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
                             </div>
                             <div class="metric-title">/health</div>
-                            <div class="metric-sub">Public node sync, height &amp; tip validation</div>
-                            <span class="price-badge price-free">FREE</span>
+                            <div class="metric-sub">Public Bitcoin Core v31.1 sync, height, tip status &amp; dual-rail health check</div>
+                            <div class="price-badge-group">
+                                <span class="price-badge price-free">FREE</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -520,16 +561,20 @@ export function renderEngineDashboardHtml(): string {
                             <span class="terminal-dot dot-yellow"></span>
                             <span class="terminal-dot dot-green"></span>
                         </div>
-                        <span class="terminal-pill">HTTP 402 &middot; L402 Lightning Protocol</span>
+                        <span class="terminal-pill">HTTP 402 &middot; Dual-Rail Protocol (L402 Lightning + x402 Base USDC)</span>
                     </div>
                     <div class="terminal-body">
-                        <div class="cmd-comment"># 1. Probe protected endpoint — receive L402 challenge with Lightning invoice</div>
-                        <span class="cmd-line">curl</span> -i https://node.sovroute.com/v1/truth/fees<br><br>
+                        <div class="cmd-comment"># 1. Probe protected forensics endpoint (e.g. Next-Block Candidate Template X-Ray)</div>
+                        <span class="cmd-line">curl</span> -i https://node.sovroute.com/v1/chain/btc/next-block-xray<br><br>
                         <div class="cmd-comment"># HTTP/1.1 402 Payment Required</div>
-                        <div class="cmd-comment"># Www-Authenticate: L402 macaroon="...", invoice="lnbc10n..."</div><br>
-                        <div class="cmd-comment"># 2. Pay 1 sat invoice via Alby, Phoenix or NWC to obtain preimage (R)</div>
-                        <div class="cmd-comment"># 3. Retrieve verified data using cryptographic token</div>
-                        <span class="cmd-line">curl</span> -H <span class="cmd-val">"Authorization: L402 &lt;macaroon&gt;:&lt;preimage&gt;"</span> https://node.sovroute.com/v1/truth/fees
+                        <div class="cmd-comment"># Www-Authenticate: L402 macaroon="...", invoice="lnbc30n..."</div>
+                        <div class="cmd-comment"># Payment-Required: eyJ4NDAyVmVyc2lvbiI6Mi... (Base USDC x402 v2 Spec)</div><br>
+                        <div class="cmd-comment"># ── RAIL 1: Native Lightning Network (L402) ──</div>
+                        <div class="cmd-comment"># Pay 3 sats via Alby / Phoenixd / NWC to obtain preimage (R), then fetch:</div>
+                        <span class="cmd-line">curl</span> -H <span class="cmd-val">"Authorization: L402 &lt;macaroon&gt;:&lt;preimage&gt;"</span> https://node.sovroute.com/v1/chain/btc/next-block-xray<br><br>
+                        <div class="cmd-comment"># ── RAIL 2: Base L2 USDC (x402 EIP-3009 Gasless) ──</div>
+                        <div class="cmd-comment"># Sign $0.003 USDC authorization (0 Gas) and fetch with Payment-Signature:</div>
+                        <span class="cmd-line">curl</span> -H <span class="cmd-val">"Payment-Signature: &lt;base64_eip3009_payload&gt;"</span> https://node.sovroute.com/v1/chain/btc/next-block-xray
                     </div>
                 </div>
             </section>
@@ -542,8 +587,11 @@ export function renderEngineDashboardHtml(): string {
             </div>
             <div class="footer-links">
                 <a href="https://sovroute.com" target="_blank">Main Gateway</a>
+                <a href="/omni-test">Live Wallet Console</a>
                 <a href="/health" target="_blank">Health Status</a>
-                <a href="https://sovroute.com/llms.txt" target="_blank">llms.txt</a>
+                <a href="/openapi.json" target="_blank">OpenAPI 3.1</a>
+                <a href="/llms.txt" target="_blank">llms.txt</a>
+                <a href="/mcp-config.json" target="_blank">MCP Config</a>
                 <a href="https://github.com/sovroutecore/sovroute" target="_blank">GitHub</a>
             </div>
         </footer>
