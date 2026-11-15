@@ -53,63 +53,6 @@ export function renderOpenApiSpec(): Record<string, unknown> {
       },
     ],
     paths: {
-      '/v1/chain/btc/rbf-shield/{txid}': {
-        get: {
-          operationId: 'checkRbfFraudShield',
-          summary: '0-Conf BIP-125 RBF Double-Spend Fraud Shield',
-          description:
-            'Inspects an unconfirmed or recently mined Bitcoin transaction (64-char hex txid) directly against bare-metal Bitcoin Core v31.1 mempool and UTXO set. Detects BIP-125 replaceability signaling, active double-spend conflicts, unconfirmed ancestor chain depth, effective package fee rate, and block confirmations. Invalid txid formats return 400 Bad Request before any payment challenge. Price: 5 sats (L402 Lightning) or $0.005 USDC (Base x402).',
-          tags: ['Bitcoin Security & Mempool Forensics'],
-          parameters: [
-            {
-              name: 'txid',
-              in: 'path',
-              required: true,
-              description: '64-character hexadecimal Bitcoin transaction ID',
-              schema: { type: 'string', pattern: '^[0-9a-fA-F]{64}$' },
-            },
-          ],
-          'x-payment-info': DUAL_RAIL_PAYMENT('0.005', 5),
-          responses: {
-            '200': {
-              description: '0-Conf RBF fraud shield assessment',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      source: { type: 'string', example: 'sovereign-bitcoind:31.1 (Full-RBF Mempool Inspector)' },
-                      paymentRail: { type: 'string', example: 'L402-LIGHTNING' },
-                      verification: { type: 'string', example: 'Cryptographic Dual-Rail Access' },
-                      data: {
-                        type: 'object',
-                        properties: {
-                          txid: { type: 'string' },
-                          isInMempool: { type: 'boolean', example: true },
-                          confirmations: { type: 'integer', example: 0 },
-                          bip125Replaceable: { type: 'boolean', example: true },
-                          vsize: { type: 'integer', example: 141 },
-                          feeRateSatPerVb: { type: 'number', example: 12.5 },
-                          ancestorCount: { type: 'integer', example: 1 },
-                          hasConflicts: { type: 'boolean', example: false },
-                          zeroConfRiskLevel: {
-                            type: 'string',
-                            enum: ['SAFE', 'MEDIUM_RISK', 'HIGH_RISK_RBF_ENABLED', 'NOT_FOUND'],
-                          },
-                          recommendation: { type: 'string' },
-                          updatedAt: { type: 'integer', example: 1794064443 },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            '400': { description: 'Invalid 64-character hex transaction ID (checked prior to payment)' },
-            '402': RESPONSE_402,
-          },
-        },
-      },
       '/v1/chain/btc/next-block-xray': {
         get: {
           operationId: 'getNextBlockXray',
@@ -159,7 +102,64 @@ export function renderOpenApiSpec(): Record<string, unknown> {
                 },
               },
             },
-            '400': { description: 'Invalid optional 64-character hex transaction ID (checked prior to payment)' },
+            '400': { description: 'Invalid optional 64-character hex transaction ID' },
+            '402': RESPONSE_402,
+          },
+        },
+      },
+      '/v1/chain/btc/rbf-shield/{txid}': {
+        get: {
+          operationId: 'checkRbfFraudShield',
+          summary: '0-Conf BIP-125 RBF Double-Spend Fraud Shield',
+          description:
+            'Inspects an unconfirmed or recently mined Bitcoin transaction (64-char hex txid) directly against bare-metal Bitcoin Core v31.1 mempool and UTXO set. Detects BIP-125 replaceability signaling, active double-spend conflicts, unconfirmed ancestor chain depth, effective package fee rate, and block confirmations. Price: 5 sats (L402 Lightning) or $0.005 USDC (Base x402).',
+          tags: ['Bitcoin Security & Mempool Forensics'],
+          parameters: [
+            {
+              name: 'txid',
+              in: 'path',
+              required: true,
+              description: '64-character hexadecimal Bitcoin transaction ID',
+              schema: { type: 'string', pattern: '^[0-9a-fA-F]{64}$' },
+            },
+          ],
+          'x-payment-info': DUAL_RAIL_PAYMENT('0.005', 5),
+          responses: {
+            '200': {
+              description: '0-Conf RBF fraud shield assessment',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      source: { type: 'string', example: 'sovereign-bitcoind:31.1 (Full-RBF Mempool Inspector)' },
+                      paymentRail: { type: 'string', example: 'L402-LIGHTNING' },
+                      verification: { type: 'string', example: 'Cryptographic Dual-Rail Access' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          txid: { type: 'string' },
+                          isInMempool: { type: 'boolean', example: true },
+                          confirmations: { type: 'integer', example: 0 },
+                          bip125Replaceable: { type: 'boolean', example: true },
+                          vsize: { type: 'integer', example: 141 },
+                          feeRateSatPerVb: { type: 'number', example: 12.5 },
+                          ancestorCount: { type: 'integer', example: 1 },
+                          hasConflicts: { type: 'boolean', example: false },
+                          zeroConfRiskLevel: {
+                            type: 'string',
+                            enum: ['SAFE', 'MEDIUM_RISK', 'HIGH_RISK_RBF_ENABLED', 'NOT_FOUND'],
+                          },
+                          recommendation: { type: 'string' },
+                          updatedAt: { type: 'integer', example: 1794064443 },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            '400': { description: 'Invalid 64-character hex transaction ID' },
             '402': RESPONSE_402,
           },
         },

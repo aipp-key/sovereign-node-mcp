@@ -243,8 +243,12 @@ export function createNodeTruthRouter(
 
   // Protected: 0-Conf RBF Double-Spend Shield (5 sats / $0.005 USDC)
   router.get(
-    ['/v1/chain/btc/rbf-shield/:txid', '/v1/truth/rbf-shield/:txid'],
-    validateTxidParam,
+    [
+      '/v1/chain/btc/rbf-shield',
+      '/v1/chain/btc/rbf-shield/:txid',
+      '/v1/truth/rbf-shield',
+      '/v1/truth/rbf-shield/:txid',
+    ],
     createL402Middleware(l402Service, {
       priceSats: 5,
       priceUsdcAtomic: '5000',
@@ -271,6 +275,7 @@ export function createNodeTruthRouter(
         },
       },
     }),
+    validateTxidParam,
     async (req: Request, res: Response) => {
       const rawTxid = req.params.txid;
       const txid = Array.isArray(rawTxid) ? rawTxid[0] : rawTxid;
@@ -395,7 +400,6 @@ export function createNodeTruthRouter(
   // Protected: Zero-Broadcast Consensus & Script Dry-Run Simulator (5 sats / $0.005 USDC)
   router.post(
     ['/v1/chain/btc/simulate-tx', '/v1/truth/simulate-tx'],
-    validateRawTxHexBody,
     createL402Middleware(l402Service, {
       priceSats: 5,
       priceUsdcAtomic: '5000',
@@ -421,6 +425,7 @@ export function createNodeTruthRouter(
         },
       },
     }),
+    validateRawTxHexBody,
     async (req: Request, res: Response) => {
       try {
         const simData = await nodeTruthService.simulateTxConsensus(req.body.rawTxHex);
