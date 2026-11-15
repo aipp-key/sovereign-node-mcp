@@ -460,6 +460,7 @@ export function renderEngineDashboardHtml(): string {
             
             <div class="cta-group">
                 <a href="#endpoints" class="btn btn-primary">Explore Endpoints &rarr;</a>
+                <a href="https://www.npmjs.com/package/@aipp/sovereign-node-mcp" class="btn btn-secondary" target="_blank" style="border-color: #cb3837; color: #cb3837; font-weight: 600; background-color: #fff5f5;">📦 MCP Server (npm v1.0.2)</a>
                 <a href="/omni-test" class="btn btn-secondary" style="border-color: #2563eb; color: #2563eb; font-weight: 600;">⚡ Live Wallet Console (/omni-test)</a>
                 <a href="/openapi.json" class="btn btn-secondary" target="_blank">OpenAPI 3.1 Spec</a>
                 <a href="/llms.txt" class="btn btn-secondary" target="_blank">llms.txt</a>
@@ -554,6 +555,23 @@ export function renderEngineDashboardHtml(): string {
 
             <!-- Architecture Terminal Block (Exact SovRoute Terminal DNA) -->
             <section id="quickstart">
+                <div class="terminal-box" style="margin-bottom: 24px;">
+                    <div class="terminal-header">
+                        <div class="terminal-dots">
+                            <span class="terminal-dot dot-red"></span>
+                            <span class="terminal-dot dot-yellow"></span>
+                            <span class="terminal-dot dot-green"></span>
+                        </div>
+                        <span class="terminal-pill">Model Context Protocol (MCP) &middot; Claude Desktop &amp; Cursor IDE</span>
+                    </div>
+                    <div class="terminal-body">
+                        <div class="cmd-comment"># Zero-install direct execution for Anthropic Claude Desktop, Cursor IDE &amp; AI Agents:</div>
+                        <span class="cmd-line">npx</span> -y @aipp/sovereign-node-mcp<br><br>
+                        <div class="cmd-comment"># Public registry: https://www.npmjs.com/package/@aipp/sovereign-node-mcp</div>
+                        <div class="cmd-comment"># Provides 7 live tools: get_next_block_xray, simulate_raw_transaction, check_rbf_fraud_shield, and more</div>
+                    </div>
+                </div>
+
                 <div class="terminal-box">
                     <div class="terminal-header">
                         <div class="terminal-dots">
@@ -591,6 +609,7 @@ export function renderEngineDashboardHtml(): string {
                 <a href="/health" target="_blank">Health Status</a>
                 <a href="/openapi.json" target="_blank">OpenAPI 3.1</a>
                 <a href="/llms.txt" target="_blank">llms.txt</a>
+                <a href="https://www.npmjs.com/package/@aipp/sovereign-node-mcp" target="_blank" style="color: #cb3837; font-weight: 600;">npm MCP Package</a>
                 <a href="/mcp-config.json" target="_blank">MCP Config</a>
                 <a href="https://github.com/sovroutecore/sovroute" target="_blank">GitHub</a>
             </div>
