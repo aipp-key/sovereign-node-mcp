@@ -159,13 +159,27 @@ Faruk
     * Challenge: `04e3f3cfac762dce67f536076ec25f7b3e1f03bfca92275991a6403a3712447f`
     * `https://node.sovroute.com/.well-known/satring-verify` ucuna yerleştirildi ve Satring tarafından doğrulanarak **"Domain Verified"** yeşil rozeti kazanıldı.
 
+* [x] **Circle Agent Marketplace Resmi Listeleme Başvurusu Yapıldı (16 Kasım 2026):**
+  * **Pazar Yeri:** Circle Agent Marketplace (`agents.circle.com/services`)
+  * **Form:** Circle Agent Intake Form (Google Form) başarıyla gönderildi (`Yanıtınız kaydedildi`).
+  * **Verilen Bilgiler:**
+    * Kategori: `Infrastructure`
+    * Uç Nokta Sayısı: `5`
+    * Fiyatlandırma: `Pay-per-request (x402 Base USDC: $0.001 - $0.005)`
+    * Yetkili: `Faruk Ucal` (`contact@sovroute.com` / `faruk@sovroute.com`)
+    * OpenAPI Spesifikasyonu: `openapi.pdf` (ve canlı `https://node.sovroute.com/openapi.json`)
+    * Dokümantasyon URL: `https://node.sovroute.com`
+    * Güvenlik & Payout: `0x488cbDad29E60d8Bae53FFF4c4252C9711dF9784` (Base USDC Kasası) & Circle Inspector 100/100 Grade A onayı ve npm `@aipp/sovereign-node-mcp` referansları iletildi.
+  * **Durum:** İnceleme beklemede (Circle ekibi onayladığında `agents.circle.com` arama sonuçlarında doğrudan listelenecek).
+
 ### 🎯 Sıradaki Eylem Sırası:
 1. **TaskFuel / Moritz Kaminski Yanıt Takibi:** `moritz@taskfuel.ai` adresine teslim edilen resmi iş birliği e-postasının yanıtını izlemek (`contact@sovroute.com`).
-2. **MCP Registry & Agent Dizinleri Dağıtımı:**
+2. **Circle Agent Marketplace Onay Takibi:** `agents.circle.com` üzerinde SovRoute listelemesinin canlıya çıkışını doğrulamak.
+3. **MCP Registry & Agent Dizinleri Dağıtımı:**
    * **Smithery.ai:** `@aipp/sovereign-node-mcp` paketini tek tıkla Smithery registry'sine ekleme (`smithery.ai/new`).
    * **Glama.ai:** Glama MCP Server kataloğuna ekleme.
    * **Cursor Directory (`cursor.directory`):** Geliştiricilerin tek tıkla ekleyebileceği Cursor MCP profilini paylaşma.
-3. **x402.new ve Ajan Pazar Yerleri:** `x402.new` otomatik tarayıcısının `https://node.sovroute.com/openapi.json` spesifikasyonunu indekslemesini doğrulamak.
+4. **x402.new ve Ajan Pazar Yerleri:** `x402.new` otomatik tarayıcısının `https://node.sovroute.com/openapi.json` spesifikasyonunu indekslemesini doğrulamak.
 
 ---
 
