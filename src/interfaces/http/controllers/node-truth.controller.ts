@@ -164,6 +164,15 @@ export function createNodeTruthRouter(
     });
   });
 
+  // Satring Domain Ownership Verification
+  router.get('/.well-known/satring-verify', (_req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.send(
+      process.env.SATRING_VERIFY_CHALLENGE ||
+        '04e3f3cfac762dce67f536076ec25f7b3e1f03bfca92275991a6403a3712447f'
+    );
+  });
+
   // Protected: Mempool Entropy Signal (2 sats / $0.002 USDC)
   router.get(
     ['/v1/chain/btc/mempool', '/v1/truth/mempool'],
