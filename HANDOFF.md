@@ -1,9 +1,10 @@
 # 🚀 SOVEREIGN NODE ENGINE — DEVİR TESLİM VE STRATEJİK YOL HARİTASI (HANDOFF)
 
-**Son Güncelleme:** 14 Kasım 2026 (Cumartesi) — Nihai Sınır Durumları, Omni L402 Tek-Kullanım Kilidi, Bellek Budama & 42/42 Test Yeşil & Canlıya Alındı  
+**Son Güncelleme:** 16 Kasım 2026 (Pazartesi) — Moritz E-postası Teslim Edildi (Resend API), Circle for Agents 100/100, Küresel MCP Sunucusu NPM'de Canlı (`@aipp/sovereign-node-mcp@1.0.2`)  
 **Yerel Proje Dizini:** `C:\Users\faruk\Desktop\dev\sovereign-node-engine`  
 **Canlı Sunucu Dizini:** `/srv/sovereign-node-engine` (`100.95.119.88:3088` - Tailscale)  
 **Canlı Ağ Geçidi:** `https://node.sovroute.com`  
+**Resmi MCP Paketi (npm):** `https://www.npmjs.com/package/@aipp/sovereign-node-mcp` (`npx -y @aipp/sovereign-node-mcp`)  
 **Özel Git Deposu (Gitea):** `http://100.95.119.88:3030/aipp/sovereign-node-engine`  
 
 ---
@@ -159,8 +160,12 @@ Faruk
     * `https://node.sovroute.com/.well-known/satring-verify` ucuna yerleştirildi ve Satring tarafından doğrulanarak **"Domain Verified"** yeşil rozeti kazanıldı.
 
 ### 🎯 Sıradaki Eylem Sırası:
-1. **TaskFuel / Moritz Kaminski E-postası:** Hem Lightning hem Base USDC canlı cüzdan testleri %100 başarıyla kanıtlandığı ve Satring listelemesi tamamlandığı için Bölüm 3'teki dondurulmuş İngilizce e-posta Moritz'e gönderilmeye hazır.
-2. **Diğer `x402` / `L402` / `MCP` Pazar Yerlerine Dağıtım:** TaskFuel sonrasında **Coinbase x402 Bazaar** (`/.well-known/x402` dahil), **x402.new**, **PayAI Network**, **Circle Agent Marketplace** ve **MCP dizinleri (`Smithery.ai`, `Glama.ai`)** kayıtları tamamlanacak.
+1. **TaskFuel / Moritz Kaminski Yanıt Takibi:** `moritz@taskfuel.ai` adresine teslim edilen resmi iş birliği e-postasının yanıtını izlemek (`contact@sovroute.com`).
+2. **MCP Registry & Agent Dizinleri Dağıtımı:**
+   * **Smithery.ai:** `@aipp/sovereign-node-mcp` paketini tek tıkla Smithery registry'sine ekleme (`smithery.ai/new`).
+   * **Glama.ai:** Glama MCP Server kataloğuna ekleme.
+   * **Cursor Directory (`cursor.directory`):** Geliştiricilerin tek tıkla ekleyebileceği Cursor MCP profilini paylaşma.
+3. **x402.new ve Ajan Pazar Yerleri:** `x402.new` otomatik tarayıcısının `https://node.sovroute.com/openapi.json` spesifikasyonunu indekslemesini doğrulamak.
 
 ---
 
@@ -171,3 +176,27 @@ Faruk
 3. `POST /v1/chain/btc/simulate-tx` (`$0.005` / `5 sats`) — Zero-Broadcast Bitcoin Consensus & Script Dry-Run Simulator (`testmempoolaccept`)
 4. `GET /v1/chain/btc/mempool` (`$0.002` / `2 sats`) — Deep Mempool Entropy & Congestion Engine
 5. `POST /v1/omni/pay-lightning` (`$0.025` / `25 sats`) — SUB-LIG Walletless Cross-Chain Lightning Bridge
+
+---
+
+## 7. 🌐 16 KASIM 2026: KÜRESEL RESMİ MCP SUNUCUSU NPM'DE YAYINDA (`@aipp/sovereign-node-mcp@1.0.2`)
+
+* **Paket Adı:** `@aipp/sovereign-node-mcp`
+* **Canlı npm Sayfası:** `https://www.npmjs.com/package/@aipp/sovereign-node-mcp`
+* **Sürüm:** `1.0.2` (Public / MIT Lisanslı)
+* **Yükleme Gerektirmeyen Doğrudan Çalıştırma:**
+  ```bash
+  npx -y @aipp/sovereign-node-mcp
+  ```
+* **Desteklenen Ortamlar:** Claude Desktop (`claude_desktop_config.json`), Cursor IDE (`.cursor/mcp.json`), Windsurf, LangChain ve otonom yapay zeka ajanları.
+* **Sağlanan 7 Resmi MCP Aracı (Forensics & Intelligence):**
+  1. `get_next_block_xray`: Canlı madenci aday blok röntgeni (Ücret: `3 sats` / `$0.003`). Sıradaki bloğa girme garantisini (`GUARANTEED_NEXT_BLOCK`) söyler.
+  2. `simulate_raw_transaction`: Sıfır-yayın (`%0 P2P`) kuru-çalıştırma konsensüs doğrulayıcısı (`testmempoolaccept`, Ücret: `5 sats` / `$0.005`).
+  3. `check_rbf_fraud_shield`: 0-Conf BIP-125 RBF çift-harcama ve ata zinciri zafiyet kalkanı (Ücret: `5 sats` / `$0.005`).
+  4. `get_bitcoin_smart_fees`: Gerçek zamanlı akıllı ücret tahmin kahini (`estimatesmartfee`, Ücret: `1 sat` / `$0.001`).
+  5. `get_mempool_entropy`: Ağ sıkışıklık ve entropi seviyesi (Ücret: `2 sats` / `$0.002`).
+  6. `verify_block_header`: Doğrudan bare-metal Core v31.1 blok ucu doğrulaması (Ücret: `1 sat` / `$0.001`).
+  7. `pay_lightning_invoice`: Ajanın NWC veya Phoenixd cüzdanı üzerinden otonom mikro-ödeme yapmasını sağlayan yardımcı araç (Ücretsiz).
+* **Doğrulama Durumu:**
+  * npm güvenlik ve kötü amaçlı yazılım taraması (`Socket Security`) onaylandı.
+  * Dokümantasyon tamamen İngilizce, temiz ve küresel standartlara getirildi; eski iç notlar tamamen kaldırıldı.
