@@ -348,17 +348,19 @@ function buildX402Requirement(
 function buildCircleGatewayRequirement(
   resourceUrl: string,
   description: string,
-  usdcAtomic: string
+  usdcAtomic: string,
+  network = 'eip155:8453',
+  asset = BASE_USDC_CONTRACT
 ) {
   return {
     scheme: 'exact',
-    network: 'eip155:8453',
+    network,
     amount: usdcAtomic,
     maxAmountRequired: usdcAtomic,
     resource: resourceUrl,
     description,
     mimeType: 'application/json',
-    asset: BASE_USDC_CONTRACT,
+    asset,
     payTo: BASE_PAY_TO_ADDRESS,
     maxTimeoutSeconds: 604900,
     extra: {
@@ -536,8 +538,53 @@ export function createL402Middleware(
         `${options.resourceName}:${req.path}`
       );
 
-      const x402Requirement = buildX402Requirement(fullResourceUrl, description, usdcAtomic);
-      const circleGatewayRequirement = buildCircleGatewayRequirement(fullResourceUrl, description, usdcAtomic);
+      const baseUsdcRequirement = buildX402Requirement(fullResourceUrl, description, usdcAtomic);
+      const polygonUsdcRequirement = {
+        scheme: 'exact',
+        network: 'eip155:137',
+        amount: usdcAtomic,
+        maxAmountRequired: usdcAtomic,
+        resource: fullResourceUrl,
+        description,
+        mimeType: 'application/json',
+        asset: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',
+        payTo: BASE_PAY_TO_ADDRESS,
+        maxTimeoutSeconds: 300,
+        extra: {
+          name: 'USD Coin',
+          version: '2',
+        },
+      };
+      const arbitrumUsdcRequirement = {
+        scheme: 'exact',
+        network: 'eip155:42161',
+        amount: usdcAtomic,
+        maxAmountRequired: usdcAtomic,
+        resource: fullResourceUrl,
+        description,
+        mimeType: 'application/json',
+        asset: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+        payTo: BASE_PAY_TO_ADDRESS,
+        maxTimeoutSeconds: 300,
+        extra: {
+          name: 'USD Coin',
+          version: '2',
+        },
+      };
+      const circleGatewayBaseRequirement = buildCircleGatewayRequirement(
+        fullResourceUrl,
+        description,
+        usdcAtomic,
+        'eip155:8453',
+        BASE_USDC_CONTRACT
+      );
+      const circleGatewayPolygonRequirement = buildCircleGatewayRequirement(
+        fullResourceUrl,
+        description,
+        usdcAtomic,
+        'eip155:137',
+        '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359'
+      );
       const l402Requirement = {
         scheme: 'l402',
         network: 'lightning:mainnet',
@@ -549,6 +596,15 @@ export function createL402Middleware(
         expiresAt: challenge.expiresAt,
       };
 
+      const acceptsList = [
+        baseUsdcRequirement,
+        polygonUsdcRequirement,
+        arbitrumUsdcRequirement,
+        circleGatewayBaseRequirement,
+        circleGatewayPolygonRequirement,
+        l402Requirement,
+      ];
+
       const x402HeaderPayload = {
         x402Version: 2,
         error: 'Payment required',
@@ -557,23 +613,30 @@ export function createL402Middleware(
           description,
           mimeType: 'application/json',
           serviceName: 'Sovereign Node Engine',
+          schema: options.schema,
+          inputSchema: options.schema?.input,
+          outputSchema: options.schema?.output,
         },
         price: usdDisplay,
-        accepts: [x402Requirement, circleGatewayRequirement, l402Requirement],
+        protocols: ['x402', 'mpp', 'l402'],
+        circleGateway: true,
+        accepts: acceptsList,
       };
 
       const base64X402Header = Buffer.from(JSON.stringify(x402HeaderPayload)).toString('base64');
 
       res.setHeader(
         'WWW-Authenticate',
-        `L402 macaroon="${challenge.macaroon}", invoice="${challenge.invoice}"`
+        `L402 macaroon="${challenge.macaroon}", invoice="${challenge.invoice}", Payment realm="sovereign-node", price="${usdDisplay}", currency="USDC", network="base"`
       );
       res.setHeader('Payment-Required', base64X402Header);
-      res.setHeader('X-Payment-Requirements', 'L402, x402, Circle-Gateway-Nanopayments');
+      res.setHeader('X-Payment-Requirements', 'L402, x402, MPP, Circle-Gateway-Nanopayments');
 
       return res.status(402).json({
         statusCode: 402,
-        protocol: 'Dual-Rail (L402 Lightning + x402 Base USDC + Circle Gateway Nanopayments)',
+        protocol: 'Dual-Rail (L402 Lightning + x402 Base USDC + Circle Gateway Nanopayments + MPP)',
+        protocols: ['x402', 'mpp', 'l402'],
+        circleGateway: true,
         x402Version: 2,
         error: 'Payment required',
         message:
@@ -585,12 +648,17 @@ export function createL402Middleware(
           description,
           mimeType: 'application/json',
           serviceName: 'Sovereign Node Engine',
+          schema: options.schema,
+          inputSchema: options.schema?.input,
+          outputSchema: options.schema?.output,
         },
         schema: options.schema || {
           input: { description: 'Request payload or parameters' },
           output: { description: 'Cryptographic node response' },
         },
-        accepts: [x402Requirement, circleGatewayRequirement, l402Requirement],
+        inputSchema: options.schema?.input,
+        outputSchema: options.schema?.output,
+        accepts: acceptsList,
         challenge: {
           macaroon: challenge.macaroon,
           priceSats: challenge.priceSats,

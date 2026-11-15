@@ -3,15 +3,16 @@
  */
 
 const DUAL_RAIL_PAYMENT = (amountUsd: string, priceSats: number) => ({
-  protocols: ['x402', 'l402'],
+  protocols: ['x402', 'mpp', 'l402'],
   pricingMode: 'fixed',
-  networks: ['eip155:8453', 'lightning:mainnet', 'eip155:1', 'eip155:42161'],
+  networks: ['eip155:8453', 'eip155:137', 'eip155:42161', 'eip155:1', 'lightning:mainnet'],
   price: {
     mode: 'fixed',
     currency: 'USDC',
     amount: amountUsd,
     priceSats,
   },
+  circleGateway: true,
   nanopayments: {
     enabled: true,
     protocol: 'circle-gateway',
