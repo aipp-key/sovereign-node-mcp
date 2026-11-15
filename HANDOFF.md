@@ -57,49 +57,40 @@ TaskFuel kataloğundaki *"Crypto & Prediction Markets -> Read the Blockchain"* k
 
 ---
 
-## 3. 📅 12 KASIM 2026 (PERŞEMBE) EYLEM PLANI: TaskFuel / Moritz Kaminski İletişimi
+## 3. 📅 15 KASIM 2026: TaskFuel / Moritz Kaminski İletişimi (✅ GÖNDERİLDİ & TESLİM EDİLDİ)
 
-### 🎯 Kritik Stratejik Kararlar (9 Kasım 2026):
-1. **Sıfır Çakışma İlkesi (Zero-Conflict):** Mevcut `sovroute.com` uçları (`/v1/chain/btc/fees` ve `/v1/chain/btc/tip`) TaskFuel kataloğunda zaten aktiftir. Bu nedenle `node.sovroute.com` tarafındaki `/fees` veya `/block` uçları kesinlikle teklife konulmayacak, çakışma riski sıfıra indirilecektir.
-2. **Yalnızca 3 Adli Bilişim (Forensics & Simulation) Ucu Sunulacak:**
-   - `GET /v1/chain/btc/rbf-shield/{txid}` (0-Conf BIP-125 RBF Double-Spend Fraud Shield)
-   - `GET /v1/chain/btc/next-block-xray` (Live Miner Candidate Block Template X-Ray & Queue Rank)
-   - `POST /v1/chain/btc/simulate-tx` (Zero-Broadcast Bitcoin Core v31.1 Consensus Simulator)
-3. **Sadece Dual-Rail (Base USDC + Native L402 Sats):** Omni-Rail (Solana, Multi-EVM) pazar yeri karmaşıklığı yaratmamak ve SovRoute'un ana Bitcoin/Lightning uzmanlık kimliğini sulandırmamak amacıyla bu teklife dahil edilmemiştir; iç altyapıda hazır tutulmaktadır.
-4. **Pazar Üstünlüğü Tespiti:** TaskFuel'deki rakipler (Glassnode, 2s.io, Otto AI, BlockRun, OneSource) 9 Kasım 2026'da canlı olarak sorgulanmış ve ekosistemde **Lightning Network (L402 / Satoshis) desteğinin %0 olduğu** doğrulanmıştır. `node.sovroute.com` bu alanda ilktir.
+**Gönderim Zamanı:** 15 Kasım 2026 23:42 TSİ (20:42 UTC)  
+**Kanal:** Resend API (`sovroute.com` doğrulanmış alan adı)  
+**Resend Mesaj ID:** `01a1e0f2-1d05-7e0c-974a-41c83108a947`  
+**Durum:** `delivered` (Doğrudan `moritz@taskfuel.ai` gelen kutusuna ulaştı)  
+**Konu:** `Re: SovRoute & TaskFuel — Following up from X / Endpoints`  
 
-### ✉️ Dondurulmuş Nihai İngilizce E-posta (14 Kasım 2026 Gönderilecek):
+### Gönderilen Kesin Metin:
+```text
+Hi Moritz,
 
-> **Subject:** Re: SovRoute & TaskFuel — Following up from X / New Forensics Endpoints
->
-> Hi Moritz,
->
-> Glad you liked the integration!
->
-> While running our own autonomous agent workloads against SovRoute, we identified two critical blind spots for agents interacting with Bitcoin:
->
-> 1. **0-Conf Double-Spend & Pre-Broadcast Blindness:** Autonomous agents accepting or routing unconfirmed transactions had no real-time oracle to inspect BIP-125 RBF replacement risk, check the live cutoff fee rate for the next block, or dry-run raw transactions against consensus rules before broadcasting to the P2P network.
-> 2. **The Missing Lightning Settlement Rail:** Even though AI agents operate on sub-cent micro-queries, virtually every provider in the space settles strictly in Base USDC. Paying 3–5 sats directly over Lightning felt vastly more native for Bitcoin workflows.
->
-> To solve this, we spun up our dedicated bare-metal **Bitcoin Core v31.1** engine at **`https://node.sovroute.com`**, featuring **Dual-Rail settlement (Base USDC `x402` + Native Lightning `L402`)** on the very same HTTP 402 challenge:
->
-> * **`GET https://node.sovroute.com/v1/chain/btc/rbf-shield/{txid}`**
->   0-Conf BIP-125 RBF Double-Spend Fraud Shield — inspects ancestor chains, conflicting spends, and UTXO confirmation status (`$0.005` Base USDC / `5 sats` L402)
-> * **`GET https://node.sovroute.com/v1/chain/btc/next-block-xray`**
->   Live miner candidate block template inspector (`getblocktemplate` cutoff fee rate & `?txid=` rank-in-block) (`$0.003` Base USDC / `3 sats` L402)
-> * **`POST https://node.sovroute.com/v1/chain/btc/simulate-tx`**
->   Zero-broadcast (`broadcast: false`) Bitcoin Core v31.1 consensus & script dry-run simulator (`testmempoolaccept`) (`$0.005` Base USDC / `5 sats` L402)
->
-> * **OpenAPI 3.1 Spec (`x-payment-info` compliant):** `https://node.sovroute.com/openapi.json`
-> * **LLM & Agent Manifest:** `https://node.sovroute.com/llms.txt`
->
-> Our existing `sovroute.com` endpoints (`/fees` and `/tip`) in the TaskFuel catalog remain 100% untouched. We would love to add these 3 forensics endpoints to SovRoute's listing on TaskFuel so agents can settle via either Base USDC or native Sats.
->
-> What do you think?
->
-> Best regards,
-> Faruk
-> SovRoute Core
+Following up on our initial endpoints — wanted to share a brand new set of endpoints we just launched on the engine.
+
+I mostly use Lightning wallets with my own agents since it feels the most natural for autonomous micropayments. But seeing that pretty much all endpoints on TaskFuel are in USDC, I built our latest batch of endpoints as Dual-Rail (supporting both Base USDC and Lightning). That way, whichever rail an agent holds, it can settle seamlessly.
+
+To complement our existing "Read the blockchain" listings, we added 3 brand new "Bitcoin Forensics" endpoints designed to protect autonomous agents from stuck txs, fee burning, and double-spends:
+
+1. 0-Conf RBF Fraud Shield (/v1/chain/btc/rbf-shield/{txid} — $0.005 USDC / 5 sats)
+Scans unconfirmed transactions directly against our bare-metal Bitcoin Core v31.1 mempool and UTXO set for BIP-125 replaceability, double-spend conflicts, and ancestor depth. Lets agents accept 0-conf payments safely.
+
+2. Next-Block Miner Template X-Ray (/v1/chain/btc/next-block-xray — $0.003 USDC / 3 sats)
+Inspects the live block template miners are actively building (getblocktemplate). Tells the agent whether its transaction is guaranteed in the very next block (GUARANTEED_NEXT_BLOCK) or queued for later.
+
+3. Zero-Broadcast Consensus Simulator (/v1/chain/btc/simulate-tx — $0.005 USDC / 5 sats)
+Dry-runs script execution and consensus rules against the live UTXO set (testmempoolaccept) without broadcasting to the P2P network. Prevents agents from broadcasting invalid transactions and losing fees.
+
+Everything is served directly from bare-metal Bitcoin Core v31.1 with ~0.04ms in-memory cache latency. The machine-readable spec is live at: https://node.sovroute.com/openapi.json
+
+If you'd like to feature them, these endpoints are live and completely ready to be added under our catalog. I'm here if you need anything from my side or want to run any test calls.
+
+Best,
+Faruk
+```
 
 ---
 
