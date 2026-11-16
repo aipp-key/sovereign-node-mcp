@@ -1,6 +1,6 @@
 # 🚀 SOVEREIGN NODE ENGINE — DEVİR TESLİM VE STRATEJİK YOL HARİTASI (HANDOFF)
 
-**Son Güncelleme:** 16 Kasım 2026 (Pazartesi) — Moritz E-postası Teslim Edildi (Resend API), Circle Agent Marketplace Başvurusu Tamamlandı, Küresel MCP Sunucusu NPM'de Canlı (`@aipp/sovereign-node-mcp@1.0.2`)  
+**Son Güncelleme:** 16 Kasım 2026 (Pazartesi) 21:10 TSİ — Glama Onayı Alındı, Watchdog & Hermes Sentinel Canlıda, Circle vs aipp Stratejik Analizi Tamamlandı, Gün Sonu Devir Teslimi Yapıldı  
 **Yerel Proje Dizini:** `C:\Users\faruk\Desktop\dev\sovereign-node-engine`  
 **Canlı Sunucu Dizini:** `/srv/sovereign-node-engine` (`100.95.119.88:3088` - Tailscale)  
 **Canlı Ağ Geçidi:** `https://node.sovroute.com`  
@@ -278,3 +278,30 @@ Faruk
 * **Entegrasyon Spesifikasyonu:** `https://node.sovroute.com/openapi.json`
 * **Webhook / Routing Secret:** `AGENTIC_MARKET_SECRET` `.env` dosyasına kaydedildi ve güvenceye alındı.
 * **Onay Durumu:** Otomatik doğrulama (`verification pending`) sürecinde; onaylandığında bildirim e-postası `contact@sovroute.com` adresine ulaşacak.
+
+---
+
+## 12. 💡 STRATEJİK DEĞERLENDİRME: CIRCLE WEB3 SUITE & `aipp` DUAL-RAIL PARADİGMASI
+
+16 Kasım 2026 akşam oturumunda, bağımsız bir vizyon oturumu olarak Circle'ın Web3 geliştirici paketi (`developers.circle.com`) ve `aipp` projemiz derinlemesine incelenmiştir:
+
+1. **Circle Mimarisi İncelemesi:**
+   * Gömülü Cüzdanlar (Developer & User-Controlled Wallets), Gas Station (Sponsorlu gaz), Paymaster (USDC ile gaz ödeme) ve CCTP / Gateway (Unified Balance) özellikleri değerlendirildi.
+   * **Bürokrasi Engeli:** Circle API ve Console'un Mainnet ortamında kurumsal kimlik / şirket doğrulaması (KYB) şart koştuğu, bireysel/şirketsiz ve sıfır bürokrasiyle canlıya geçişe izin vermediği netleştirildi.
+2. **`aipp` Farkındalığı & Doğrulaması:**
+   * Kendi geliştirdiğimiz `aipp` projemizin (`C:\Users\faruk\Desktop\dev\aippdev`) zaten mikro-satışlar ($0.10 - $3), dijital link/dosya, Passkey/WebAuthn oturumu ve Dual-Rail (⚡ Lightning + 🔵 Base USDC) ile bu acıyı çözdüğü teyit edildi.
+   * `aipp`'nin kullanıcı fonlarını emanette tutmadığı (non-custodial instant forward), bu sayede finansal lisans veya şirket zorunluluğu olmadan saf "Software Routing & Licensing Fee" (%3) ile çalıştığı vurgulandı.
+3. **Gelecek İyileştirme Fırsatı (USDC Permit / EIP-2612):**
+   * Circle'ın sağladığı tek gerçek üstünlük olan *"Kullanıcının cüzdanında ETH olmadan işlem yapabilmesi"* (Gasless UX) konforunun; şirket kurmadan, Base üzerindeki yerel USDC akıllı sözleşmesinin **EIP-2612 `permit()`** fonksiyonu ile `aipp`'ye de kazandırılabileceği tespit edildi.
+4. **Mevcut Karar:**
+   * Bu stratejik vizyon ve teknik yol haritası ileride değerlendirilmek üzere rafa kaldırıldı; mevcut sistemler kesintisiz çalışır durumda bırakıldı.
+
+---
+
+## 13. 🌙 GÜN SONU DURUMU & YARINA DEVİR (16 KASIM 2026 21:10 TSİ)
+
+* **Bare-Metal Düğüm:** `node.sovroute.com` 4 rayda da (%100 uptime, < 0.05ms önbellek) canlı ve aktif.
+* **Pazar Yerleri:** Glama.ai onaylandı, TaskFuel aktif, Agentic Market Founder #1 kaydı tamam, Satring yayında.
+* **Otonom Gözetleme:** `@SovRouteNotifyBot` Telegram üzerinden 11 kritik noktayı ve haftalık Hermes Sentinel denetimlerini izliyor.
+* **Depolar & Kod:** Tüm yerel ve sunucu depoları senkronize, testler yeşil (19/19).
+
