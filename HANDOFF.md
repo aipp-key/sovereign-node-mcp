@@ -305,3 +305,21 @@ Faruk
 * **Otonom Gözetleme:** `@SovRouteNotifyBot` Telegram üzerinden 11 kritik noktayı ve haftalık Hermes Sentinel denetimlerini izliyor.
 * **Depolar & Kod:** Tüm yerel ve sunucu depoları senkronize, testler yeşil (19/19).
 
+---
+
+## 14. 🎯 YARININ İLK ÖNCELİĞİ: EIP-7702 GÜVENLİK KALKANI (AUTHTX SCANNER)
+
+Ethereum Pectra yükseltmesiyle hayatımıza giren ve EOA cüzdanları akıllı hesaba dönüştüren **EIP-7702** için otonom ajan seviyesinde adli bilişim (forensics) ve güvenlik kalkanı servisi inşa edilecek:
+
+* **Çözülecek Ölümcül Tehdit:** Ajanların veya kullanıcıların sahte `authorization_list` imzalayarak cüzdanlarındaki tüm varlıkları saldırganın akıllı sözleşmesine devretmesi (Wallet Drainer), denetlenmemiş delegasyonlar ve cross-chain replay zafiyetleri.
+* **Geliştirilecek Uç Nokta:** `POST /v1/chain/evm/eip7702-shield` (ve `/v1/omni/evm/eip7702-shield`)
+  * Ücret: `5 sats` (L402) / `$0.005` (Base USDC).
+* **Kalkanın Yapacağı Analiz:**
+  1. `authorization_list` ayrıştırma (`chain_id`, `address`, `nonce`).
+  2. Hedef adresin denetim ve itibar kontrolü (Safe / Kernel / ERC-7579 standardı mı, yoksa şüpheli/drainer mı?).
+  3. Bytecode disassembly: `selfdestruct`, gizli `delegatecall` veya yetkisiz token transfer kancası taraması.
+  4. Cross-chain replay riski (Zincir sınırlandırması geçerli mi?).
+  5. Karar Puanı: `SAFE_VERIFIED` | `SUSPICIOUS_UNVERIFIED` | `CRITICAL_DRAIN_RISK`.
+* **MCP Aracı:** `@aipp/sovereign-node-mcp` paketine 8. araç olarak `inspect_eip7702_authorization` eklenecek, OpenAPI şeması ve testleri hazırlanacak.
+
+
