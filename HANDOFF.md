@@ -224,8 +224,10 @@ Faruk
 * **Eklenen Dosyalar:**
   * `glama.json`: Sektörün şu anki 1 numaralı aktif açık MCP kataloğu olan **Glama.ai** (`glama.ai/mcp/servers`) otomatik doğrulama ve sahiplik şeması eklendi (`mtwuser`).
   * `smithery.yaml`: Statik dizin indekslemesi için konfigürasyon korundu.
+  * `Dockerfile`: Glama'nın otomatik Docker güvenlik ve derleme testi için multi-stage üretim Dockerfile'ı eklendi.
+* **Resmi Public GitHub Reposu:** `https://github.com/aipp-key/sovereign-node-mcp` (Canlı & Public).
 * **Test Kapsamı:** `tests/mcp-server.test.ts` 7/7 aracı doğrulamak üzere güncellendi ve yeşil geçti.
-* **Sonraki Adım:** [glama.ai/mcp/servers](https://glama.ai/mcp/servers) ve [pulsemcp.com](https://pulsemcp.com) üzerinden tek tıkla dizin listelemesi başlatmak.
+* **Glama Durumu:** 16 Kasım 2026 14:10 TSİ itibarıyla form teslim edildi ve Glama ekibinden resmi onay e-postası alındı (`It is now pending review`). İnceleme süreci takip ediliyor.
 
 ---
 
