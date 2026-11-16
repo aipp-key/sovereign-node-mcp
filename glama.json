@@ -1,0 +1,8 @@
+{
+  "$schema": "https://glama.ai/mcp/schemas/server.json",
+  "name": "@aipp/sovereign-node-mcp",
+  "description": "Zero-trust Bitcoin Core v31.1 Intelligence & Forensics MCP Server for AI Agents",
+  "maintainers": [
+    "mtwuser"
+  ]
+}
