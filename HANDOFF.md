@@ -227,7 +227,7 @@ Faruk
   * `Dockerfile`: Glama'nın otomatik Docker güvenlik ve derleme testi için multi-stage üretim Dockerfile'ı eklendi.
 * **Resmi Public GitHub Reposu:** `https://github.com/aipp-key/sovereign-node-mcp` (Canlı & Public).
 * **Test Kapsamı:** `tests/mcp-server.test.ts` 7/7 aracı doğrulamak üzere güncellendi ve yeşil geçti.
-* **Glama Durumu:** 16 Kasım 2026 14:10 TSİ itibarıyla form teslim edildi ve Glama ekibinden resmi onay e-postası alındı (`It is now pending review`). İnceleme süreci takip ediliyor.
+* **Glama Durumu:** 16 Kasım 2026 14:32 TSİ itibarıyla **GLAMA RESMİ OLARAK ONAYLADI!** (`sovereign-node-mcp` Glama küresel MCP kataloğunda resmen dizine eklendi ve canlı yayına girdi).
 
 ---
 
