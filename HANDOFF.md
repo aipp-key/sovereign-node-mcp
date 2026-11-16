@@ -254,6 +254,20 @@ Faruk
 
 ---
 
+## 11. 🛡️ SOVEREIGN STANDARDS & HERMES HAFTALIK İSTİHBARAT AJANI
+
+* **Standartlar Belgesi:** `SOVEREIGN_STANDARDS.md` oluşturuldu ve GitHub'a işlendi.
+  * *1. Temel Felsefe:* Mutlak Gerçeklik (Ground Truth), Ray Bağımsızlığı (L402/x402/SOL/EVM), Sıfır-Mağduriyet (Zero Failures / Retry Voucher), Radikal Çeviklik.
+  * *2. Operasyonel Standartlar:* `< 0.05ms` önbellek, `%99.95+` uptime, `%0` 5xx sızıntısı.
+  * *3. 6 Resmi Pazar Yeri & Dizin Portföyü:* TaskFuel, Circle, Glama, Global Agentic Market, Satring, npm.
+* **Hermes Sentinel Rutini:** `scripts/hermes-sentinel.mjs`
+  * Her Pazartesi sabahı otonom olarak çalışır.
+  * Tüm pazar yerlerini, uç gecikmelerini, npm sürümünü ve GitHub açık sorunlarını denetler.
+  * Yönetici brifingini doğrudan `@SovRouteNotifyBot` üzerinden Telegram'a raporlar.
+  * İlk denetim 16 Kasım 2026 14:42 TSİ'de başarıyla çalıştırıldı ve Telegram'a ulaştı.
+
+---
+
 ## 9. 🏆 GLOBAL AGENTIC MARKET EXCHANGE: FOUNDER #1 OLARAK EKLENDİ!
 
 * **Pazar Yeri:** Global Agentic Market Exchange (`agenticmarket.exchange`)
