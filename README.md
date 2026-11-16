@@ -11,9 +11,25 @@
 
 ## ⚡ Quick Start
 
-You can run the Sovereign Node MCP server directly via `npx` — no installation required!
+### 🚀 One-Command Install via Smithery (Recommended)
 
-### 1. Claude Desktop Setup
+Automatically configure Claude Desktop, Cursor, or Windsurf in seconds:
+
+```bash
+# For Anthropic Claude Desktop
+npx -y @smithery/cli install @aipp/sovereign-node-mcp --client claude
+
+# For Cursor IDE
+npx -y @smithery/cli install @aipp/sovereign-node-mcp --client cursor
+```
+
+---
+
+### 📦 Manual Setup via `npx` (Zero Installation)
+
+You can also run the Sovereign Node MCP server directly via `npx`:
+
+#### 1. Claude Desktop Setup
 Add this to your `claude_desktop_config.json`:
 
 ```json
@@ -32,7 +48,7 @@ Add this to your `claude_desktop_config.json`:
 ```
 *(Note: `ALBY_NWC_URL` or `PHOENIXD_PASSWORD` is optional if your agent autonomously settles L402 pay-per-call queries via satoshis).*
 
-### 2. Cursor IDE Setup
+#### 2. Cursor IDE Setup
 Add to your `.cursor/mcp.json`:
 
 ```json

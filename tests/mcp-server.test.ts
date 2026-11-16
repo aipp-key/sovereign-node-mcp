@@ -42,6 +42,9 @@ test('Sovereign MCP Server - Tool Registration & Listing', async () => {
   assert.ok(toolNames.includes('get_mempool_entropy'), 'get_mempool_entropy registered');
   assert.ok(toolNames.includes('verify_block_header'), 'verify_block_header registered');
   assert.ok(toolNames.includes('pay_lightning_invoice'), 'pay_lightning_invoice registered');
+  assert.ok(toolNames.includes('get_next_block_xray'), 'get_next_block_xray registered');
+  assert.ok(toolNames.includes('simulate_raw_transaction'), 'simulate_raw_transaction registered');
+  assert.equal(toolsResponse.tools.length, 7, 'All 7 forensic and intelligence tools registered');
 
   // Verify rbf shield tool schema
   const rbfTool = toolsResponse.tools.find((t) => t.name === 'check_rbf_fraud_shield');

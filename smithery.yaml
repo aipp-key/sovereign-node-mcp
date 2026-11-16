@@ -1,0 +1,41 @@
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+startCommand:
+  type: stdio
+
+configSchema:
+  type: object
+  properties:
+    sovereignNodeUrl:
+      type: string
+      default: "https://node.sovroute.com"
+      description: "URL of the Sovereign Node Gateway (default: https://node.sovroute.com)"
+    albyNwcUrl:
+      type: string
+      description: "Alby Nostr Wallet Connect (NWC) connection string (nostr+walletconnect://...) for autonomous L402 Lightning micropayments."
+    phoenixdUrl:
+      type: string
+      description: "Optional local or remote Phoenixd node URL (e.g. http://127.0.0.1:9740)."
+    phoenixdPassword:
+      type: string
+      description: "Optional HTTP password for the Phoenixd node."
+    maxPriceSatsAllowed:
+      type: number
+      default: 10
+      description: "Maximum satoshis allowed per tool call budget limit (default: 10 sats)."
+
+commandFunction: |-
+  (config) => ({
+    command: 'node',
+    args: ['dist/interfaces/mcp/index.js'],
+    env: {
+      SOVEREIGN_NODE_URL: config.sovereignNodeUrl || 'https://node.sovroute.com',
+      ...(config.albyNwcUrl ? { ALBY_NWC_URL: config.albyNwcUrl } : {}),
+      ...(config.phoenixdUrl ? { PHOENIXD_URL: config.phoenixdUrl } : {}),
+      ...(config.phoenixdPassword ? { PHOENIXD_PASSWORD: config.phoenixdPassword } : {}),
+      ...(config.maxPriceSatsAllowed ? { MAX_PRICE_SATS_ALLOWED: String(config.maxPriceSatsAllowed) } : {})
+    }
+  })
+
+exampleConfig:
+  sovereignNodeUrl: "https://node.sovroute.com"
+  maxPriceSatsAllowed: 10
