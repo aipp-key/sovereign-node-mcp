@@ -8,6 +8,7 @@ import {
   attachPostPaymentFailureGuard,
   tryHandleRetryVoucherHeader,
 } from './retry-voucher.helper.js';
+import { verifyAgenticMarketSignature } from './agentic-market.helper.js';
 
 export const BASE_PAY_TO_ADDRESS =
   process.env.BASE_PAY_TO_ADDRESS || '0x488cbDad29E60d8Bae53FFF4c4252C9711dF9784';
@@ -395,6 +396,22 @@ export function createL402Middleware(
     const host = req.get('host') || 'node.sovroute.com';
     const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
     const fullResourceUrl = `${proto}://${host}${req.originalUrl || req.path}`;
+
+    // -------------------------------------------------------------------------
+    // RAIL 0: Global Agentic Market Exchange (HMAC Signature Escrow Gateway)
+    // -------------------------------------------------------------------------
+    if (req.header('x-agenticmarket-signature')) {
+      const verification = verifyAgenticMarketSignature(req);
+      if (verification.isValid) {
+        (req as any).paymentRail = 'AGENTIC-MARKET-EXCHANGE';
+        return next();
+      }
+      return res.status(401).json({
+        error: 'Unauthorized: Invalid Agentic Market Signature',
+        details: verification.reason,
+        protocol: 'agentic-market',
+      });
+    }
 
     // -------------------------------------------------------------------------
     // RAIL 1: Native Lightning L402 (Authorization: L402 <macaroon>:<preimage>)
