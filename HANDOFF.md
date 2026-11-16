@@ -217,13 +217,12 @@ Faruk
 
 ---
 
-## 8. 🛠️ SMITHERY.AI ENTEGRASYONU TAMAMLANDI (`smithery.yaml`)
+## 8. 🛠️ MCP REGISTRY ENTEGRASYONU (GLAMA.AI & DOĞRUDAN VENDOR YÖNTEMİ)
 
-* **Konfigürasyon Dosyası:** `smithery.yaml` eklendi.
-* **Smithery CLI Tek Tıkla Kurulum:**
-  ```bash
-  npx -y @smithery/cli install @aipp/sovereign-node-mcp --client claude
-  npx -y @smithery/cli install @aipp/sovereign-node-mcp --client cursor
-  ```
+* **Sektör Gelişmesi:** Smithery.ai, Arcade.dev tarafından satın alınarak aracı proxy ve CLI katmanını kapattı ve doğrudan satıcı MCP URL'lerini listeleyen statik bir dizine dönüştü.
+* **Bizim Mimari Avantajımız:** Biz `@aipp/sovereign-node-mcp` paketini zaten hiçbir aracıya bağlı kalmadan doğrudan yerel `npx -y @aipp/sovereign-node-mcp` ve vendor-direct formatında inşa etmiştik.
+* **Eklenen Dosyalar:**
+  * `glama.json`: Sektörün şu anki 1 numaralı aktif açık MCP kataloğu olan **Glama.ai** (`glama.ai/mcp/servers`) otomatik doğrulama ve sahiplik şeması eklendi (`mtwuser`).
+  * `smithery.yaml`: Statik dizin indekslemesi için konfigürasyon korundu.
 * **Test Kapsamı:** `tests/mcp-server.test.ts` 7/7 aracı doğrulamak üzere güncellendi ve yeşil geçti.
-* **Sonraki Adım:** Smithery web arayüzünden (`smithery.ai/new`) paket indekslemesini başlatmak.
+* **Sonraki Adım:** [glama.ai/mcp/servers](https://glama.ai/mcp/servers) ve [pulsemcp.com](https://pulsemcp.com) üzerinden tek tıkla dizin listelemesi başlatmak.
