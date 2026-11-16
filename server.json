@@ -1,0 +1,55 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schemas/server.json",
+  "name": "sovereign-node-engine",
+  "title": "Sovereign Node Engine",
+  "description": "Zero-trust Bitcoin Core v31.1 Intelligence, 0-Conf RBF Forensics, and Consensus Simulation for AI Agents.",
+  "version": "1.0.3",
+  "author": {
+    "name": "SovRoute",
+    "email": "contact@sovroute.com",
+    "url": "https://sovroute.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sovroutecore/sovroute"
+  },
+  "homepage": "https://node.sovroute.com",
+  "packages": [
+    {
+      "registry": "npm",
+      "name": "@aipp/sovereign-node-mcp",
+      "version": "1.0.3",
+      "executable": "sovereign-node-mcp"
+    }
+  ],
+  "tools": [
+    {
+      "name": "get_next_block_xray",
+      "description": "Inspects live getblocktemplate candidate block to reveal cutoff fee rates and queue rank (GUARANTEED_NEXT_BLOCK vs QUEUED_FOR_LATER)."
+    },
+    {
+      "name": "simulate_raw_transaction",
+      "description": "Zero-broadcast dry-run consensus validator (testmempoolaccept) against live Bitcoin Core v31.1 UTXO set."
+    },
+    {
+      "name": "check_rbf_fraud_shield",
+      "description": "0-Conf BIP-125 RBF double-spend fraud shield. Inspects BIP-125 signaling, unconfirmed ancestor chains, and conflicting spends."
+    },
+    {
+      "name": "get_bitcoin_smart_fees",
+      "description": "Real-time estimatesmartfee projections (sat/vB) for fastest and economic confirmation targets."
+    },
+    {
+      "name": "get_mempool_entropy",
+      "description": "Real-time Bitcoin mempool statistics (unconfirmed tx count, vsize, total fee pool in sats)."
+    },
+    {
+      "name": "verify_block_header",
+      "description": "Latest verified Bitcoin Mainnet tip height, block hash, difficulty, and timestamp from bare-metal Core v31.1."
+    },
+    {
+      "name": "pay_lightning_invoice",
+      "description": "Autonomously pays any BOLT-11 invoice via configured Lightning wallet and returns preimage."
+    }
+  ]
+}

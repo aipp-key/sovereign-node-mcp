@@ -68,7 +68,7 @@ export function renderMcpConfigJson(): Record<string, unknown> {
     mcpServers: {
       'sovereign-node-engine': {
         command: 'npx',
-        args: ['-y', 'tsx', 'src/interfaces/mcp/index.ts'],
+        args: ['-y', '@aipp/sovereign-node-mcp'],
         env: {
           SOVEREIGN_NODE_URL: 'https://node.sovroute.com',
           ALBY_NWC_URL: 'nostr+walletconnect://YOUR_ALBY_HUB_NWC_SECRET',
@@ -77,9 +77,11 @@ export function renderMcpConfigJson(): Record<string, unknown> {
       },
     },
     toolsProvided: [
+      'get_next_block_xray',
+      'simulate_raw_transaction',
       'check_rbf_fraud_shield',
-      'get_mempool_entropy',
       'get_bitcoin_smart_fees',
+      'get_mempool_entropy',
       'verify_block_header',
       'pay_lightning_invoice',
     ],
