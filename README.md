@@ -76,6 +76,7 @@ npx -y @aipp/sovereign-node-mcp
 * **Agent Context & Guidance:** `https://node.sovroute.com/llms.txt`
 * **Circle for Agents Score:** `100/100 Grade A (Runtime-verified)`
 * **Satring Directory:** `#1097 [domain verified]`
+* **Global Agentic Market Exchange:** `Founder #1 [e0bee9b5-8576-44a9-83bb-35981957c9de · Nano $0.008]`
 
 ---
 
