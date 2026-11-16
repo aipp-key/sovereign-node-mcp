@@ -214,3 +214,16 @@ Faruk
 * **Doğrulama Durumu:**
   * npm güvenlik ve kötü amaçlı yazılım taraması (`Socket Security`) onaylandı.
   * Dokümantasyon tamamen İngilizce, temiz ve küresel standartlara getirildi; eski iç notlar tamamen kaldırıldı.
+
+---
+
+## 8. 🛠️ SMITHERY.AI ENTEGRASYONU TAMAMLANDI (`smithery.yaml`)
+
+* **Konfigürasyon Dosyası:** `smithery.yaml` eklendi.
+* **Smithery CLI Tek Tıkla Kurulum:**
+  ```bash
+  npx -y @smithery/cli install @aipp/sovereign-node-mcp --client claude
+  npx -y @smithery/cli install @aipp/sovereign-node-mcp --client cursor
+  ```
+* **Test Kapsamı:** `tests/mcp-server.test.ts` 7/7 aracı doğrulamak üzere güncellendi ve yeşil geçti.
+* **Sonraki Adım:** Smithery web arayüzünden (`smithery.ai/new`) paket indekslemesini başlatmak.
