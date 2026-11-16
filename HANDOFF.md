@@ -231,6 +231,29 @@ Faruk
 
 ---
 
+## 10. 🛰️ TELEGRAM EKOSİSTEM GÖZETLEME SİSTEMİ (ECOSYSTEM WATCHDOG)
+
+* **Script:** `scripts/ecosystem-watchdog.mjs`
+* **Telegram Botu:** `@SovRouteNotifyBot` (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID: 7873309240`)
+* **Taranan 11 Kritik Nokta:**
+  1. `node.sovroute.com (Health)`: `200 OK`
+  2. `Next-Block X-Ray (L402/x402)`: `402 Payment Required`
+  3. `0-Conf RBF Shield (L402/x402)`: `402 Payment Required`
+  4. `Bitcoin Smart Fees (L402/x402)`: `402 Payment Required`
+  5. `Mempool Entropy (L402/x402)`: `402 Payment Required`
+  6. `OpenAPI 3.1 Spec`: `200 OK`
+  7. `Satring Domain Verification`: `200 OK`
+  8. `Satring Directory Page`: `200 OK`
+  9. `Agentic Market Exchange`: `200 OK`
+  10. `npm: @aipp/sovereign-node-mcp`: `200 OK` (Sürüm takibi: `v1.0.2`)
+  11. `GitHub Public Repo`: `200 OK` (Açık hata/issue sayısı: `0`)
+* **İlk Canlı Rapor:** 16 Kasım 2026 14:20 TSİ itibarıyla Telegram'a başarıyla iletildi (`Telegram dispatch result: SUCCESS`).
+* **Çalışma Modları:**
+  * `node scripts/ecosystem-watchdog.mjs`: Tam durum raporunu Telegram'a gönderir.
+  * `node scripts/ecosystem-watchdog.mjs --alert-only`: Yalnızca bir uç, pazar yeri veya npm/GitHub çökerse acil kırmızı alarm atar.
+
+---
+
 ## 9. 🏆 GLOBAL AGENTIC MARKET EXCHANGE: FOUNDER #1 OLARAK EKLENDİ!
 
 * **Pazar Yeri:** Global Agentic Market Exchange (`agenticmarket.exchange`)
