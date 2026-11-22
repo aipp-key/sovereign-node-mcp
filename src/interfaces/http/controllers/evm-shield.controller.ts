@@ -5,6 +5,7 @@ import { EvmSafetyService } from '../../../application/services/evm-safety.servi
 import { L402Service } from '../../../application/services/l402.service.js';
 import { Eip7702ShieldRequestSchema } from '../../../domain/schemas/eip7702.schema.js';
 import {
+  EvmAddressSafetyBatchRequestSchema,
   EvmAddressSafetyRequestSchema,
   EvmSimulateTxRequestSchema,
 } from '../../../domain/schemas/evm-safety.schema.js';
@@ -230,6 +231,63 @@ export function createEvmShieldRouter(
         });
       } catch (err: any) {
         res.status(500).json({ error: 'EVM Address Safety Inspection Failed', details: err.message });
+      }
+    }
+  );
+
+  // Batch EVM Address, Contract & Token Safety Scanner (up to 10 addresses): 15 sats / $0.015 USDC
+  router.post(
+    '/v1/chain/evm/address-safety/batch',
+    (req: Request, res: Response, next: NextFunction) => {
+      const parsed = EvmAddressSafetyBatchRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({
+          error: 'Invalid EVM address-safety batch payload',
+          details: parsed.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+        });
+        return;
+      }
+      (req as any).validatedAddressBatch = parsed.data;
+      next();
+    },
+    createL402Middleware(l402Service, {
+      priceSats: 15,
+      priceUsdcAtomic: '15000',
+      priceUsdDisplay: '$0.015',
+      resourceName: 'evm-address-safety-batch',
+      description:
+        'Batch EVM Address, Contract & Token Safety Scanner: inspects up to 10 addresses in parallel with aggregate verdict and per-address risk breakdown.',
+    }),
+    async (req: Request, res: Response) => {
+      try {
+        const { chainId, addresses } = (req as any).validatedAddressBatch as {
+          chainId: number;
+          addresses: string[];
+        };
+        const unique = [...new Set(addresses.map((a) => a.toLowerCase()))];
+        const results = await Promise.all(
+          unique.map((address) => evmSafety.inspectAddressSafety({ chainId, address }))
+        );
+        const maxRiskScore = results.reduce((max, r) => Math.max(max, r.riskScore), 0);
+        const overallVerdict = results.some((r) => r.verdict === 'HIGH_RISK')
+          ? 'HIGH_RISK'
+          : results.some((r) => r.verdict === 'CAUTION')
+            ? 'CAUTION'
+            : 'SAFE';
+        res.json({
+          source: 'sovereign-evm-forensics:address-safety-batch',
+          paymentRail: (req as any).paymentRail || 'L402-LIGHTNING',
+          data: {
+            chainId,
+            overallVerdict,
+            maxRiskScore,
+            totalInspected: results.length,
+            results,
+            inspectedAt: new Date().toISOString(),
+          },
+        });
+      } catch (err: any) {
+        res.status(500).json({ error: 'Batch EVM Address Safety Failed', details: err.message });
       }
     }
   );

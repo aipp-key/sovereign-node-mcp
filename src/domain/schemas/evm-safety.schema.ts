@@ -28,6 +28,11 @@ export const EvmAddressSafetyRequestSchema = z.object({
   address: evmAddressSchema,
 });
 
+export const EvmAddressSafetyBatchRequestSchema = z.object({
+  chainId: z.number().int().positive(),
+  addresses: z.array(evmAddressSchema).min(1).max(10),
+});
+
 export const SafetyFindingSchema = z.object({
   code: z.string(),
   severity: z.enum(['INFO', 'WARN', 'CRITICAL']),

@@ -2,6 +2,8 @@
  * OpenAPI 3.1.0 Specification with TaskFuel `x-payment-info` for Sovereign Node Engine (node.sovroute.com)
  */
 
+import { buildSecurityAndWatchtowerPaths } from './openapi-security-paths.helper.js';
+
 const TRIPLE_RAIL_PAYMENT = (amountUsd: string, priceSats: number) => ({
   protocols: ['mpp', 'x402', 'l402'],
   pricingMode: 'fixed',
@@ -542,6 +544,7 @@ export function renderOpenApiSpec(): Record<string, unknown> {
           },
         },
       },
+      ...buildSecurityAndWatchtowerPaths(TRIPLE_RAIL_PAYMENT, RESPONSE_402),
     },
     components: {
       securitySchemes: {
