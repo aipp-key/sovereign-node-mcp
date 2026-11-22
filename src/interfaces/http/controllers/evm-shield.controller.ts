@@ -1,8 +1,13 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { Eip7702ShieldService } from '../../../application/services/eip7702-shield.service.js';
+import { EvmSafetyService } from '../../../application/services/evm-safety.service.js';
 import { L402Service } from '../../../application/services/l402.service.js';
 import { Eip7702ShieldRequestSchema } from '../../../domain/schemas/eip7702.schema.js';
+import {
+  EvmAddressSafetyRequestSchema,
+  EvmSimulateTxRequestSchema,
+} from '../../../domain/schemas/evm-safety.schema.js';
 import { EvmOnnxRiskAdapter } from '../../../infrastructure/ml/evm-onnx-risk.adapter.js';
 import { createL402Middleware, DUAL_RAIL_CORS_HEADERS } from '../middleware/l402.middleware.js';
 import { createOmniRailMiddleware, OMNI_RAIL_CORS_HEADERS } from '../middleware/omni-rail.middleware.js';
@@ -150,6 +155,81 @@ export function createEvmShieldRouter(
         });
       } catch (err: any) {
         res.status(500).json({ error: 'ONNX Bytecode Inference Failed', details: err.message });
+      }
+    }
+  );
+
+  // Pre-Flight EVM Transaction Simulator: 5 sats / $0.005 USDC
+  const evmSafety = new EvmSafetyService();
+  router.post(
+    '/v1/chain/evm/simulate-tx',
+    (req: Request, res: Response, next: NextFunction) => {
+      const parsed = EvmSimulateTxRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({
+          error: 'Invalid EVM simulate-tx payload',
+          details: parsed.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+        });
+        return;
+      }
+      (req as any).validatedSimulateTx = parsed.data;
+      next();
+    },
+    createL402Middleware(l402Service, {
+      priceSats: 5,
+      priceUsdcAtomic: '5000',
+      priceUsdDisplay: '$0.005',
+      resourceName: 'evm-simulate-tx',
+      description:
+        'EVM Pre-Flight Transaction Simulator: dry-runs eth_call + gas estimation, decodes revert reasons, detects unlimited approvals, EIP-7702 target delegations, and ONNX drainer risk.',
+    }),
+    async (req: Request, res: Response) => {
+      try {
+        const report = await evmSafety.simulateTransaction((req as any).validatedSimulateTx);
+        res.json({
+          source: 'sovereign-evm-forensics:simulate-tx',
+          paymentRail: (req as any).paymentRail || 'L402-LIGHTNING',
+          data: report,
+        });
+      } catch (err: any) {
+        res.status(500).json({ error: 'EVM Transaction Simulation Failed', details: err.message });
+      }
+    }
+  );
+
+  // EVM Address, Contract & Token Safety Scanner: 4 sats / $0.004 USDC
+  router.post(
+    '/v1/chain/evm/address-safety',
+    (req: Request, res: Response, next: NextFunction) => {
+      const parsed = EvmAddressSafetyRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({
+          error: 'Invalid EVM address-safety payload',
+          details: parsed.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+        });
+        return;
+      }
+      (req as any).validatedAddressSafety = parsed.data;
+      next();
+    },
+    createL402Middleware(l402Service, {
+      priceSats: 4,
+      priceUsdcAtomic: '4000',
+      priceUsdDisplay: '$0.004',
+      resourceName: 'evm-address-safety',
+      description:
+        'EVM Address, Contract & Token Safety Scanner: classifies EOA/EIP-7702/Proxy/ERC-20, checks privileged mint/pause/blacklist controls, dangerous opcodes, and ONNX drainer score.',
+    }),
+    async (req: Request, res: Response) => {
+      try {
+        const report = await evmSafety.inspectAddressSafety((req as any).validatedAddressSafety);
+        res.json({
+          source: 'sovereign-evm-forensics:address-safety',
+          paymentRail: (req as any).paymentRail || 'L402-LIGHTNING',
+          data: report,
+        });
+      } catch (err: any) {
+        res.status(500).json({ error: 'EVM Address Safety Inspection Failed', details: err.message });
       }
     }
   );
