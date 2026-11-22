@@ -9,6 +9,12 @@ import {
   tryHandleRetryVoucherHeader,
 } from './retry-voucher.helper.js';
 import { verifyAgenticMarketSignature } from './agentic-market.helper.js';
+import {
+  buildMppLightningChallenge,
+  buildMppUsdcChallenge,
+  parseMppAuthorizationHeader,
+  buildMppPaymentReceiptHeader,
+} from './mpp.helper.js';
 
 export const BASE_PAY_TO_ADDRESS =
   process.env.BASE_PAY_TO_ADDRESS || '0x488cbDad29E60d8Bae53FFF4c4252C9711dF9784';
@@ -295,7 +301,7 @@ export const DUAL_RAIL_CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Headers':
     'Authorization, Content-Type, X-Payment, Payment-Signature, X-Payment-Proof, Payment-Proof, X-Payment-Retry-Voucher, X-Retry-Voucher',
   'Access-Control-Expose-Headers':
-    'WWW-Authenticate, Payment-Required, X-Payment-Requirements, Payment-Response, X-Payment-Response, X-Payment-Retry-Voucher',
+    'WWW-Authenticate, Payment-Required, Payment-Receipt, X-Payment-Requirements, Payment-Response, X-Payment-Response, X-Payment-Retry-Voucher',
 };
 
 function parseX402Header(rawHeader: string | undefined): any | null {
@@ -445,6 +451,122 @@ export function createL402Middleware(
           details: err.message,
         });
       }
+    }
+
+    // -------------------------------------------------------------------------
+    // RAIL 1.5: Machine Payments Protocol (Authorization: Payment <token>)
+    // Per IETF draft-httpauth-payment-01, draft-lightning-charge-00, draft-usdc-charge-00
+    // -------------------------------------------------------------------------
+    if (authHeader && authHeader.startsWith('Payment ')) {
+      const parsedMpp = parseMppAuthorizationHeader(authHeader);
+
+      if (!parsedMpp.isMpp || parsedMpp.error) {
+        return res.status(402).json({
+          error: 'MPP Payment Verification Failed',
+          details: parsedMpp.error || 'Invalid MPP credential structure.',
+          protocol: 'mpp',
+        });
+      }
+
+      // Method A: Lightning Network Preimage Charge
+      if (parsedMpp.preimage && parsedMpp.paymentHash) {
+        try {
+          const verification = await l402Service.verifyPreimage(
+            parsedMpp.paymentHash,
+            parsedMpp.preimage
+          );
+
+          if (verification.isValid) {
+            const receiptHeader = buildMppPaymentReceiptHeader({
+              challengeId: parsedMpp.challengeId || `ch_${parsedMpp.paymentHash.slice(0, 16)}`,
+              method: 'lightning',
+              reference: parsedMpp.paymentHash,
+            });
+            res.setHeader('Payment-Receipt', receiptHeader);
+            (req as any).paymentRail = 'MPP-LIGHTNING';
+            (req as any).mpp = {
+              method: 'lightning',
+              intent: parsedMpp.intent || 'charge',
+              challengeId: parsedMpp.challengeId,
+              paymentHash: parsedMpp.paymentHash,
+              preimage: parsedMpp.preimage,
+            };
+            attachPostPaymentFailureGuard(res, {
+              replayKey: `mpp:lightning:${parsedMpp.paymentHash}`,
+              priceSats: options.priceSats,
+              rail: 'MPP-LIGHTNING',
+            });
+            return next();
+          }
+
+          return res.status(402).json({
+            error: 'MPP Lightning Preimage Verification Failed',
+            details:
+              verification.errorReason || 'Preimage does not match payment hash or invoice is unpaid.',
+            protocol: 'mpp',
+          });
+        } catch (err: any) {
+          return res.status(500).json({
+            error: 'MPP Verification Exception',
+            details: err.message,
+          });
+        }
+      }
+
+      // Method B: USDC / EVM Direct EIP-3009 Charge
+      if (parsedMpp.usdcAuthorization) {
+        const auth = parsedMpp.usdcAuthorization;
+        const signature = auth.signature;
+
+        const valueBigInt = parseSafeUintBigInt(auth.value);
+        const requiredBigInt = BigInt(usdcAtomic);
+        if (valueBigInt === null || valueBigInt < requiredBigInt) {
+          return res.status(402).json({
+            error: 'MPP USDC Insufficient Amount',
+            details: `Required ${usdcAtomic} atomic USDC, received ${valueBigInt?.toString() || '0'}.`,
+            protocol: 'mpp',
+          });
+        }
+
+        const requirement = buildX402Requirement(fullResourceUrl, description, usdcAtomic);
+        const x402Check = await verifyAndSettleX402Payment({
+          parsedX402: { payload: { authorization: auth, signature } },
+          auth,
+          signature,
+          requiredAtomic: requiredBigInt,
+          requirement,
+          requiredPriceSats: options.priceSats,
+        });
+
+        if (!x402Check.ok) {
+          return res.status(402).json({
+            error: x402Check.error,
+            details: x402Check.details,
+            protocol: 'mpp',
+          });
+        }
+
+        const receiptHeader = buildMppPaymentReceiptHeader({
+          challengeId: parsedMpp.challengeId || `ch_usdc_${auth.nonce.slice(0, 16)}`,
+          method: 'usdc',
+          reference: x402Check.txHash || auth.nonce,
+        });
+        res.setHeader('Payment-Receipt', receiptHeader);
+        (req as any).paymentRail = 'MPP-BASE-USDC';
+        attachPostPaymentFailureGuard(res, {
+          replayKey: x402Check.replayKey,
+          priceSats: options.priceSats,
+          rail: 'MPP-BASE-USDC',
+          txHash: x402Check.txHash,
+        });
+        return next();
+      }
+
+      return res.status(402).json({
+        error: 'MPP Unrecognized Payment Method',
+        details: 'Currently supported MPP methods: lightning, usdc.',
+        protocol: 'mpp',
+      });
     }
 
     // -------------------------------------------------------------------------
@@ -642,22 +764,48 @@ export function createL402Middleware(
 
       const base64X402Header = Buffer.from(JSON.stringify(x402HeaderPayload)).toString('base64');
 
-      res.setHeader(
-        'WWW-Authenticate',
-        `L402 macaroon="${challenge.macaroon}", invoice="${challenge.invoice}", Payment realm="sovereign-node", price="${usdDisplay}", currency="USDC", network="base"`
-      );
+      const mppLightning = buildMppLightningChallenge({
+        id: `ch_lig_${challenge.paymentHash.slice(0, 16)}`,
+        realm: host,
+        amountSats: challenge.priceSats,
+        invoice: challenge.invoice,
+        paymentHash: challenge.paymentHash,
+        description,
+        expiresAtSec: challenge.expiresAt,
+        network: 'mainnet',
+      });
+
+      const mppUsdc = buildMppUsdcChallenge({
+        id: `ch_usdc_${challenge.paymentHash.slice(0, 16)}`,
+        realm: host,
+        amountAtomic: usdcAtomic,
+        recipient: BASE_PAY_TO_ADDRESS,
+        currency: BASE_USDC_CONTRACT,
+        description,
+        chainId: 8453,
+        expiresAtSec: challenge.expiresAt,
+      });
+
+      res.setHeader('WWW-Authenticate', [
+        `L402 macaroon="${challenge.macaroon}", invoice="${challenge.invoice}"`,
+        mppLightning.headerValue,
+        mppUsdc.headerValue,
+      ]);
       res.setHeader('Payment-Required', base64X402Header);
-      res.setHeader('X-Payment-Requirements', 'L402, x402, MPP, Circle-Gateway-Nanopayments');
+      res.setHeader(
+        'X-Payment-Requirements',
+        'L402, x402, MPP (Lightning + USDC), Circle-Gateway-Nanopayments'
+      );
 
       return res.status(402).json({
         statusCode: 402,
-        protocol: 'Dual-Rail (L402 Lightning + x402 Base USDC)',
+        protocol: 'Multi-Rail (L402 Lightning + MPP + x402 Base USDC)',
         protocols: ['x402', 'mpp', 'l402'],
         circleGateway: true,
         x402Version: 2,
         error: 'Payment required',
         message:
-          'Payment Required: Settle instantly via Lightning Network (L402 BOLT-11 invoice) or Base L2 USDC (x402).',
+          'Payment Required: Settle instantly via Lightning Network (L402 / MPP BOLT-11 invoice) or Base L2 USDC (x402 / MPP).',
         price: usdDisplay,
         priceSats: challenge.priceSats,
         resource: {
@@ -683,11 +831,26 @@ export function createL402Middleware(
           paymentHash: challenge.paymentHash,
           expiresAt: challenge.expiresAt,
         },
+        mpp: {
+          spec: 'draft-httpauth-payment-01',
+          lightning: {
+            challenge: mppLightning.headerValue,
+            request: mppLightning.requestPayload,
+          },
+          usdc: {
+            challenge: mppUsdc.headerValue,
+            request: mppUsdc.requestPayload,
+          },
+        },
         instructions: {
           rail1_lightning_l402:
             'Pay the BOLT-11 invoice over Lightning Network (or via Alby Hub NWC) and repeat request with header: "Authorization: L402 <macaroon>:<preimage>".',
-          rail2_base_x402: `Sign an EIP-3009 USDC authorization on Base (eip155:8453) for ${usdDisplay} (${usdcAtomic} atomic units) to ${BASE_PAY_TO_ADDRESS} and repeat request with header: "Payment-Signature: <base64_x402_payload>".`,
-          rail3_circle_nanopayments: `Sign a gasless Circle Gateway Nanopayment authorization against verifyingContract ${CIRCLE_GATEWAY_CONTRACT} and repeat request with header: "Payment-Signature: <base64_x402_payload>".`,
+          rail2_mpp_lightning:
+            'Pay invoice via MPP and repeat request with header: "Authorization: Payment <token>" per draft-lightning-charge-00.',
+          rail3_base_x402: `Sign an EIP-3009 USDC authorization on Base (eip155:8453) for ${usdDisplay} (${usdcAtomic} atomic units) to ${BASE_PAY_TO_ADDRESS} and repeat request with header: "Payment-Signature: <base64_x402_payload>".`,
+          rail4_mpp_usdc:
+            'Sign an EIP-3009 authorization via MPP and repeat request with header: "Authorization: Payment <token>" per draft-usdc-charge-00.',
+          rail5_circle_nanopayments: `Sign a gasless Circle Gateway Nanopayment authorization against verifyingContract ${CIRCLE_GATEWAY_CONTRACT} and repeat request with header: "Payment-Signature: <base64_x402_payload>".`,
         },
       });
     } catch (err: any) {

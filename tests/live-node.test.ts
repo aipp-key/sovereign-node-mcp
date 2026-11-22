@@ -250,14 +250,17 @@ test('E2E HTTP Router: /v1/chain/btc/rbf-shield/:txid & /v1/chain/btc/mempool en
     assert.strictEqual(mempool402.status, 402);
     assert.ok(mempool402.headers.get('www-authenticate')?.startsWith('L402 '));
     assert.ok(mempool402.headers.get('payment-required'), 'Must include x402 Payment-Required header');
-    assert.strictEqual(mempool402.headers.get('x-payment-requirements'), 'L402, x402');
+    assert.strictEqual(
+      mempool402.headers.get('x-payment-requirements'),
+      'L402, x402, MPP (Lightning + USDC), Circle-Gateway-Nanopayments'
+    );
 
     const mempoolBody: any = await mempool402.json();
     assert.strictEqual(mempoolBody.x402Version, 2);
     assert.strictEqual(mempoolBody.challenge.priceSats, 2);
-    assert.strictEqual(mempoolBody.accepts.length, 2, 'Should offer both Base x402 and Lightning L402 in accepts');
-    assert.strictEqual(mempoolBody.accepts[0].network, 'eip155:8453');
-    assert.strictEqual(mempoolBody.accepts[1].scheme, 'l402');
+    assert.ok(mempoolBody.accepts.length >= 2, 'Should offer Base x402 and Lightning L402 in accepts');
+    assert.ok(mempoolBody.accepts.some((a: any) => a.network === 'eip155:8453'), 'Must include Base USDC x402 accept');
+    assert.ok(mempoolBody.accepts.some((a: any) => a.scheme === 'l402'), 'Must include Lightning L402 accept');
     const mempoolPreimage = gateway.paidPreimages.get(mempoolBody.challenge.paymentHash)!;
 
     // 3. Paid call via RAIL 1 (L402 Lightning) to /v1/chain/btc/mempool succeeds with 200 OK

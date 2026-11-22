@@ -10,6 +10,7 @@ import {
   renderLlmsTxt,
   renderOpenApiSpec,
   renderMcpConfigJson,
+  renderX402Manifest,
 } from '../views/discovery-specs.view.js';
 
 function validateTxidParam(req: Request, res: Response, next: NextFunction): void {
@@ -66,6 +67,11 @@ export function createNodeTruthRouter(
   // Root Dashboard / Discovery
   router.get('/', (req: Request, res: Response): void => {
     if (req.accepts('html')) {
+      const redirectTo = process.env.REDIRECT_HTML_TO_URL?.trim();
+      if (redirectTo) {
+        res.redirect(302, redirectTo);
+        return;
+      }
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.send(renderEngineDashboardHtml());
       return;
@@ -135,11 +141,30 @@ export function createNodeTruthRouter(
       documentation: 'https://node.sovroute.com/llms.txt',
       openApiSpec: 'https://node.sovroute.com/openapi.json',
       mcpConfig: 'https://node.sovroute.com/mcp-config.json',
+      x402Manifest: 'https://node.sovroute.com/.well-known/x402.json',
     });
     return;
   });
 
   // Public Machine-Readable Discovery Endpoints (Free / 0 sats)
+  router.get('/robots.txt', (_req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.send('User-agent: *\nAllow: /\nSitemap: https://node.sovroute.com/sitemap.xml\n');
+  });
+
+  router.get('/sitemap.xml', (_req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.send(
+      '<?xml version="1.0" encoding="UTF-8"?>\n' +
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+        '  <url><loc>https://node.sovroute.com/</loc><priority>1.0</priority></url>\n' +
+        '  <url><loc>https://node.sovroute.com/openapi.json</loc><priority>0.9</priority></url>\n' +
+        '  <url><loc>https://node.sovroute.com/llms.txt</loc><priority>0.9</priority></url>\n' +
+        '  <url><loc>https://node.sovroute.com/.well-known/x402.json</loc><priority>0.9</priority></url>\n' +
+        '</urlset>\n'
+    );
+  });
+
   router.get('/llms.txt', (_req: Request, res: Response) => {
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.send(renderLlmsTxt());
@@ -147,6 +172,11 @@ export function createNodeTruthRouter(
 
   router.get(['/openapi.json', '/.well-known/openapi.json'], (_req: Request, res: Response) => {
     res.json(renderOpenApiSpec());
+  });
+
+  router.get(['/.well-known/x402', '/.well-known/x402.json', '/x402.json'], (_req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.json(renderX402Manifest());
   });
 
   router.get('/.well-known/ai-plugin.json', (_req: Request, res: Response) => {
@@ -249,6 +279,7 @@ export function createNodeTruthRouter(
       '/v1/truth/rbf-shield',
       '/v1/truth/rbf-shield/:txid',
     ],
+    validateTxidParam,
     createL402Middleware(l402Service, {
       priceSats: 5,
       priceUsdcAtomic: '5000',
@@ -275,7 +306,6 @@ export function createNodeTruthRouter(
         },
       },
     }),
-    validateTxidParam,
     async (req: Request, res: Response) => {
       const rawTxid = req.params.txid;
       const txid = Array.isArray(rawTxid) ? rawTxid[0] : rawTxid;
@@ -400,6 +430,7 @@ export function createNodeTruthRouter(
   // Protected: Zero-Broadcast Consensus & Script Dry-Run Simulator (5 sats / $0.005 USDC)
   router.post(
     ['/v1/chain/btc/simulate-tx', '/v1/truth/simulate-tx'],
+    validateRawTxHexBody,
     createL402Middleware(l402Service, {
       priceSats: 5,
       priceUsdcAtomic: '5000',
@@ -425,7 +456,6 @@ export function createNodeTruthRouter(
         },
       },
     }),
-    validateRawTxHexBody,
     async (req: Request, res: Response) => {
       try {
         const simData = await nodeTruthService.simulateTxConsensus(req.body.rawTxHex);

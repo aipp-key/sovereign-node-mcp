@@ -64,6 +64,15 @@ export const LightningTopologySignalSchema = z.object({
   updatedAt: z.number().int().positive(),
 });
 
+export const LightningNetworkStatsSchema = z.object({
+  channel_count: z.number().int().nonnegative(),
+  node_count: z.number().int().nonnegative(),
+  total_capacity_sats: z.number().int().nonnegative(),
+  avg_fee_rate_ppm: z.number().nonnegative(),
+  med_fee_rate_ppm: z.number().nonnegative(),
+  updatedAt: z.number().int().positive(),
+});
+
 export const VerifiableNodeAttestationSchema = z.object({
   schemaVersion: z.literal('1.0.0'),
   sourceNode: z.string(),
@@ -144,6 +153,7 @@ export type SmartFeeProjection = z.infer<typeof SmartFeeProjectionSchema>;
 export type RbfShieldAssessment = z.infer<typeof RbfShieldAssessmentSchema>;
 export type BlockHeaderTruth = z.infer<typeof BlockHeaderTruthSchema>;
 export type LightningTopologySignal = z.infer<typeof LightningTopologySignalSchema>;
+export type LightningNetworkStats = z.infer<typeof LightningNetworkStatsSchema>;
 export type NextBlockXray = z.infer<typeof NextBlockXraySchema>;
 export type TxConsensusSimulation = z.infer<typeof TxConsensusSimulationSchema>;
 export type VerifiableNodeAttestation = z.infer<typeof VerifiableNodeAttestationSchema>;

@@ -142,7 +142,13 @@ test('SCENARIO 2: Full Route, Alias, Discovery Spec, Content Negotiation & CORS 
     }
     assert.match(await (await fetch(`${baseUrl}/`, { headers: { Accept: 'text/html' } })).text(), /<html/i);
     assert.equal(((await (await fetch(`${baseUrl}/`, { headers: { Accept: 'application/json' } })).json()) as any).service, 'Sovereign Node Engine');
-    assert.match(await (await fetch(`${baseUrl}/omni-test`)).text(), /<html/i);
+    assert.equal((await fetch(`${baseUrl}/omni-test`)).status, 404);
+    process.env.ENABLE_OMNI_TEST_UI = 'true';
+    try {
+      assert.match(await (await fetch(`${baseUrl}/omni-test`)).text(), /<html/i);
+    } finally {
+      delete process.env.ENABLE_OMNI_TEST_UI;
+    }
     assert.match(await (await fetch(`${baseUrl}/llms.txt`)).text(), /node\.sovroute\.com/);
     assert.equal(((await (await fetch(`${baseUrl}/openapi.json`)).json()) as any).openapi, '3.1.0');
     assert.ok(((await (await fetch(`${baseUrl}/mcp-config.json`)).json()) as any).mcpServers);

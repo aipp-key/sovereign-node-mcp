@@ -6,8 +6,18 @@ import { PhoenixdGatewayAdapter } from './infrastructure/lightning/phoenixd-gate
 import { PhoenixdPayerAdapter } from './infrastructure/lightning/phoenixd-payer.adapter.js';
 import { NodeTruthService } from './application/services/node-truth.service.js';
 import { L402Service } from './application/services/l402.service.js';
+import { Eip7702ShieldService } from './application/services/eip7702-shield.service.js';
+import { MarketIntelService } from './application/services/market-intel.service.js';
+import { OracleFeedsService } from './application/services/oracle-feeds.service.js';
+import { createDefaultCrewAiStatusService } from './application/services/crewai-status.service.js';
 import { createNodeTruthRouter } from './interfaces/http/controllers/node-truth.controller.js';
 import { createOmniRailRouter } from './interfaces/http/controllers/omni-rail.controller.js';
+import { createEvmShieldRouter } from './interfaces/http/controllers/evm-shield.controller.js';
+import { createMarketIntelRouter } from './interfaces/http/controllers/market-intel.controller.js';
+import { createOracleFeedsRouter } from './interfaces/http/controllers/oracle-feeds.controller.js';
+import { createMcpRouter } from './interfaces/http/controllers/mcp.controller.js';
+import { createCrewAiStatusRouter } from './interfaces/http/controllers/crewai-status.controller.js';
+import { createInternalCoreRouter } from './interfaces/http/controllers/internal-core.controller.js';
 
 dotenv.config();
 
@@ -18,6 +28,13 @@ const MACAROON_SECRET = process.env.MACAROON_SECRET || 'sovereign-l402-dev-secre
 
 async function bootstrap() {
   const app = express();
+  app.disable('x-powered-by');
+  app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    next();
+  });
   app.use(express.json());
 
   // 1. Infrastructure Layer Adapters
@@ -44,6 +61,12 @@ async function bootstrap() {
   // 2. Application Layer Services
   const nodeTruthService = new NodeTruthService(bitcoinAdapter);
   const l402Service = new L402Service(lightningGateway);
+  const eip7702ShieldService = new Eip7702ShieldService();
+  const marketIntelService = new MarketIntelService();
+  marketIntelService.start();
+  const oracleFeedsService = new OracleFeedsService();
+  oracleFeedsService.start();
+  const crewAiStatusService = createDefaultCrewAiStatusService(process.env);
   const phoenixdPayer = new PhoenixdPayerAdapter({
     baseUrl: process.env.PHOENIXD_URL || 'http://127.0.0.1:9740',
     httpPassword: process.env.PHOENIXD_PASSWORD || '__G3mE5-OJwzyIdNmMMxNQRnjqb-uK-w',
@@ -52,10 +75,28 @@ async function bootstrap() {
   // 3. Transport Layer Routers
   const router = createNodeTruthRouter(nodeTruthService, l402Service);
   const omniRouter = createOmniRailRouter(nodeTruthService, l402Service, phoenixdPayer);
+  const evmShieldRouter = createEvmShieldRouter(eip7702ShieldService, l402Service);
+  const marketIntelRouter = createMarketIntelRouter(marketIntelService, l402Service);
+  const oracleFeedsRouter = createOracleFeedsRouter(oracleFeedsService, l402Service);
+  const mcpRouter = createMcpRouter(nodeTruthService, eip7702ShieldService, l402Service);
+  const crewAiStatusRouter = createCrewAiStatusRouter(crewAiStatusService);
+  const internalCoreRouter = createInternalCoreRouter(nodeTruthService, {
+    coreBridgeKey: process.env.CORE_BRIDGE_KEY,
+  });
   app.use(router);
   app.use(omniRouter);
+  app.use(evmShieldRouter);
+  app.use(marketIntelRouter);
+  app.use(oracleFeedsRouter);
+  app.use(mcpRouter);
+  app.use(crewAiStatusRouter);
+  app.use(internalCoreRouter);
 
-  // 4. Clean JSON Error Handler (prevents HTML stack-trace leaks on malformed JSON)
+  // 4. Clean JSON 404 & Error Handlers (prevents Express HTML 404 & stack-trace leaks)
+  app.use((_req: express.Request, res: express.Response) => {
+    res.status(404).json({ error: 'Not found' });
+  });
+
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     if (err instanceof SyntaxError && 'body' in err) {
       res.status(400).json({ error: 'Invalid JSON payload' });
@@ -64,11 +105,19 @@ async function bootstrap() {
     res.status(500).json({ error: 'Internal server error' });
   });
 
-  app.listen(PORT, HOST, () => {
+  const server = app.listen(PORT, HOST, () => {
     console.log(`[Sovereign Node Engine] Live on http://${HOST}:${PORT}`);
     console.log(`[Sovereign Node Engine] Node Target: ${TAILSCALE_HOST} (Bitcoin Core 31.1 & LND 0.21.3)`);
     console.log(`[Sovereign Node Engine] L402 Zero-Trust Protected Endpoints Active`);
   });
+
+  const shutdown = () => {
+    marketIntelService.stop();
+    oracleFeedsService.stop();
+    server.close();
+  };
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
 }
 
 bootstrap().catch((err) => {

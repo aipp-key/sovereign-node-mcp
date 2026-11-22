@@ -1,18 +1,29 @@
+import {
+  renderCrewAiLiveSectionHtml,
+  renderCrewAiLiveScript,
+  renderCrewAiLiveStyles,
+} from './crewai-live-section.view.js';
+
 export function renderEngineDashboardHtml(): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sovereign Node Engine — Bare-Metal Bitcoin &amp; Lightning Core</title>
-    <meta name="description" content="Bare-Metal Bitcoin Core 31.1 and Phoenixd L402 intelligence engine for autonomous AI agents.">
+    <title>SovRoute Node Engine — Bitcoin Core v31.1 &amp; EVM Forensics</title>
+    <meta name="description" content="Bare-Metal Bitcoin Core v31.1 forensics, zero-broadcast consensus simulation, and EIP-7702 security scanner via Triple-Rail HTTP 402 &amp; MPP (MPP + L402 + x402).">
     <link rel="icon" type="image/png" sizes="32x32" href="https://sovroute.com/assets/favicon.png">
     <link rel="icon" type="image/x-icon" href="https://sovroute.com/favicon.ico">
     <link rel="apple-touch-icon" sizes="180x180" href="https://sovroute.com/assets/apple-touch-icon.png">
 
+    <!-- AI Agent & LLM Machine Discovery -->
+    <link rel="alternate" type="text/plain" href="https://node.sovroute.com/llms.txt" title="Sovereign Node Forensics LLMs.txt">
+    <link rel="alternate" type="text/plain" href="https://sovroute.com/llms.txt" title="SovRoute Core LLMs.txt">
+
     <style>
         :root {
             --bg-color: #ffffff;
+            --surface-subtle: #f8fafc;
             --text-main: #0f172a;
             --text-muted: #64748b;
             --text-mono: #94a3b8;
@@ -21,20 +32,16 @@ export function renderEngineDashboardHtml(): string {
             --accent-blue-hover: #1d4ed8;
             --accent-blue-border: #bfdbfe;
             --accent-orange: #f7931a;
-            --content-max-width: 860px;
+            --content-max-width: 980px;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
-            line-height: 1.5;
+            line-height: 1.55;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             font-size: 16px;
@@ -42,580 +49,1111 @@ export function renderEngineDashboardHtml(): string {
             min-height: 100vh;
         }
 
-        /* Subtle Technical Dot Grid Background (Identical to sovroute.com) */
         body::before {
             content: "";
             position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
+            inset: 0;
             background-image: radial-gradient(var(--text-mono) 1px, transparent 1px);
             background-size: 24px 24px;
-            opacity: 0.40;
+            opacity: 0.35;
             z-index: -1;
             pointer-events: none;
         }
 
-        .container {
+        .container { max-width: var(--content-max-width); margin: 0 auto; padding: 0 24px; }
+
+        /* Top Navigation */
+        .topbar {
+            border-bottom: 1px solid var(--border-light);
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            position: sticky;
+            top: 0;
+            z-index: 40;
+        }
+        .topbar-inner {
             max-width: var(--content-max-width);
             margin: 0 auto;
-            padding: 0 24px;
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
         }
-
-        /* Header / Hero */
-        header {
-            text-align: center;
-            padding-top: 56px;
-            padding-bottom: 40px;
-        }
-
-        .hero-brand {
+        .nav-brand {
             display: inline-flex;
             align-items: center;
-            justify-content: center;
-            gap: 12px;
-            margin-bottom: 10px;
-        }
-
-        .hero-brand-logo {
-            height: 42px;
-            width: auto;
-            object-fit: contain;
-            filter: drop-shadow(0 4px 12px rgba(37, 99, 235, 0.16)) drop-shadow(0 2px 6px rgba(247, 147, 26, 0.2));
-            display: block;
-            transition: transform 0.2s ease;
-        }
-
-        .hero-brand-logo:hover {
-            transform: scale(1.05);
-        }
-
-        h1.logo {
-            font-size: 2.125rem;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--text-main);
             font-weight: 700;
-            margin: 0;
-            line-height: 1;
+            font-size: 0.95rem;
+            letter-spacing: -0.02em;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .nav-brand img { height: 26px; width: auto; }
+        .nav-pill {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            color: var(--accent-blue);
+            background: #eff6ff;
+            border: 1px solid var(--accent-blue-border);
+            padding: 2px 7px;
+            border-radius: 999px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .nav-links {
+            display: flex;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 20px;
+            font-size: 0.8125rem;
+            font-weight: 500;
+        }
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            white-space: nowrap;
+            transition: color 0.15s ease;
+        }
+        .nav-links a:hover { color: var(--text-main); }
+        .nav-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            color: #047857;
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            padding: 4px 10px;
+            border-radius: 999px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        /* Hero */
+        header {
+            text-align: center;
+            padding-top: 52px;
+            padding-bottom: 36px;
+        }
+        .eyebrow {
+            display: inline-block;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--accent-blue);
+            margin-bottom: 12px;
+        }
+        h1.hero-title {
+            font-size: 2.35rem;
+            font-weight: 700;
+            line-height: 1.15;
             letter-spacing: -0.03em;
             color: var(--text-main);
+            margin-bottom: 14px;
         }
-
-        .eyebrow {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            font-size: 0.75rem;
-            color: var(--text-mono);
-            margin-bottom: 16px;
-            display: block;
-            letter-spacing: 0.02em;
-        }
-
         .hero-desc {
-            font-size: 1.05rem;
+            font-size: 1.02rem;
             color: var(--text-muted);
-            margin: 0 auto 14px auto;
             max-width: 680px;
-            line-height: 1.5;
+            margin: 0 auto 14px auto;
         }
-
         .hero-sub {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            font-size: 0.75rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.78rem;
             color: var(--text-mono);
-            margin-bottom: 28px;
-            letter-spacing: 0.01em;
+            margin-bottom: 26px;
         }
-
         .cta-group {
             display: flex;
-            gap: 12px;
             justify-content: center;
+            align-items: center;
             flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 18px;
         }
-
         .btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            height: 40px;
-            padding: 0 16px;
+            gap: 6px;
+            padding: 10px 20px;
             font-size: 0.875rem;
-            font-weight: 500;
+            font-weight: 600;
             text-decoration: none;
             border-radius: 8px;
-            transition: border-color 0.15s ease, background-color 0.15s ease;
+            transition: all 0.15s ease;
+            cursor: pointer;
         }
-
         .btn-primary {
-            background-color: var(--accent-blue);
-            color: white;
-            border: 1px solid var(--accent-blue);
+            background-color: var(--text-main);
+            color: #ffffff;
+            border: 1px solid var(--text-main);
         }
-
-        .btn-primary:hover { 
-            background-color: var(--accent-blue-hover); 
-            border-color: var(--accent-blue-hover); 
+        .btn-primary:hover {
+            background-color: #1e293b;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.14);
         }
-
         .btn-secondary {
-            background-color: white;
+            background-color: #ffffff;
             color: var(--text-main);
             border: 1px solid var(--border-light);
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
         }
-
-        .btn-secondary:hover { 
-            background-color: #f8fafc; 
-            border-color: #cbd5e1; 
+        .btn-secondary:hover {
+            border-color: #cbd5e1;
+            background-color: var(--surface-subtle);
+            transform: translateY(-1px);
         }
+        .spec-strip {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px 18px;
+            font-size: 0.78rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            color: var(--text-muted);
+        }
+        .spec-strip a {
+            color: var(--text-muted);
+            text-decoration: underline dashed #cbd5e1;
+            text-underline-offset: 3px;
+        }
+        .spec-strip a:hover { color: var(--accent-blue); text-decoration-color: var(--accent-blue); }
 
-        /* App Teaser Card Styles (Exact sovroute.com DNA) */
+        /* Status & Capability Card */
         .app-teaser-card {
-            max-width: 860px;
-            width: 100%;
-            margin: 0 auto 40px auto;
-            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            background: #ffffff;
             border: 1px solid var(--border-light);
-            border-radius: 20px;
-            padding: 36px 32px;
-            box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.06), 0 4px 6px -2px rgba(15, 23, 42, 0.02);
-            text-align: center;
+            border-radius: 14px;
+            padding: 28px;
+            margin-bottom: 28px;
+            box-shadow: 0 12px 32px rgba(15, 23, 42, 0.04);
         }
-
         .teaser-header {
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            margin-bottom: 20px;
+            align-items: center;
+            margin-bottom: 16px;
             flex-wrap: wrap;
-            gap: 12px;
+            gap: 10px;
         }
-
         .teaser-badge {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            font-family: ui-monospace, SFMono-Regular, monospace;
-            font-size: 0.6875rem;
+            font-size: 0.72rem;
             font-weight: 700;
-            color: #059669;
-            background-color: #ecfdf5;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #047857;
+            background: #ecfdf5;
             border: 1px solid #a7f3d0;
             padding: 4px 10px;
-            border-radius: 9999px;
-            letter-spacing: 0.04em;
+            border-radius: 999px;
         }
-
         .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
+            width: 7px;
+            height: 7px;
             background-color: #10b981;
+            border-radius: 50%;
             box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
-            animation: pulse-dot 2s infinite ease-in-out;
+            animation: pulse 2.2s infinite;
         }
-
-        @keyframes pulse-dot {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.7; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45); }
+            70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
-
         .teaser-rate {
-            font-family: ui-monospace, SFMono-Regular, monospace;
-            font-size: 0.75rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.78rem;
+            font-weight: 600;
             color: var(--text-muted);
-            background: #ffffff;
+            background: var(--surface-subtle);
+            padding: 4px 10px;
+            border-radius: 6px;
             border: 1px solid var(--border-light);
-            padding: 4px 12px;
-            border-radius: 9999px;
         }
-
         .teaser-title {
-            font-size: 1.375rem;
+            font-size: 1.35rem;
             font-weight: 700;
             letter-spacing: -0.02em;
             color: var(--text-main);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
-
         .teaser-desc {
-            font-size: 0.9375rem;
+            font-size: 0.92rem;
             color: var(--text-muted);
-            line-height: 1.55;
-            max-width: 640px;
-            margin: 0 auto 28px auto;
+            margin-bottom: 22px;
         }
-
         .teaser-metrics-grid {
             display: grid;
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(3, 1fr);
             gap: 14px;
-            margin-bottom: 30px;
-            text-align: left;
         }
-
-        @media (min-width: 640px) {
-            .teaser-metrics-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (min-width: 992px) {
-            .teaser-metrics-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-
         .teaser-metric {
-            background-color: #ffffff;
+            background: var(--surface-subtle);
             border: 1px solid var(--border-light);
-            border-radius: 12px;
+            border-radius: 10px;
             padding: 16px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
-            transition: all 0.15s ease;
+            gap: 8px;
+            transition: border-color 0.15s ease, transform 0.15s ease;
         }
-
         .teaser-metric:hover {
             border-color: #cbd5e1;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
-            transform: translateY(-1px);
+            transform: translateY(-2px);
         }
-
-        .metric-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            background-color: #f1f5f9;
+        .metric-top {
             display: flex;
             align-items: center;
-            justify-content: center;
-            margin-bottom: 4px;
-            color: var(--text-main);
+            justify-content: space-between;
+            gap: 8px;
         }
-
-        .metric-title {
-            font-family: ui-monospace, SFMono-Regular, monospace;
+        .metric-top-right {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .copy-icon-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            min-inline-size: 24px;
+            min-block-size: 26px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #334155;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .copy-icon-btn:hover {
+            color: var(--text-main);
+            border-color: #94a3b8;
+            background: #f1f5f9;
+        }
+        .copy-icon-btn.copied {
+            color: #047857;
+            border-color: #a7f3d0;
+            background: #ecfdf5;
+        }
+        .filter-tabs {
+            display: flex;
+            align-items: center;
+            overflow-x: auto;
+            scrollbar-width: none;
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+        .filter-tabs::-webkit-scrollbar,
+        .terminal-tabs::-webkit-scrollbar { display: none; }
+        .filter-tab {
+            position: relative;
+            flex: none;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
             font-size: 0.75rem;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 7px;
+            border: 1px solid var(--border-light);
+            background: var(--surface-subtle);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+        }
+        .filter-tab:hover {
+            color: var(--text-main);
+            border-color: #cbd5e1;
+        }
+        .filter-tab.active,
+        .filter-tab[aria-selected="true"] {
+            background: var(--text-main);
+            color: #ffffff;
+            border-color: var(--text-main);
+        }
+        .filter-tab[aria-selected="true"]::after {
+            content: "";
+            position: absolute;
+            inset: auto 8px 0;
+            border-block-end: 2px solid #38bdf8;
+        }
+        .agent-copy-bar {
+            margin-top: 18px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .agent-copy-label {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .agent-copy-actions {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .agent-copy-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 11px;
+            border-radius: 7px;
+            border: 1px solid var(--border-light);
+            background: var(--surface-subtle);
+            color: var(--text-main);
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.72rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .agent-copy-pill:hover {
+            border-color: #cbd5e1;
+            background: #ffffff;
+        }
+        .agent-copy-pill.copied {
+            color: #047857;
+            border-color: #a7f3d0;
+            background: #ecfdf5;
+        }
+        .method-tag {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.6875rem;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 5px;
+            letter-spacing: 0.03em;
+        }
+        .method-get { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .method-post { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
+        .metric-title {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.78rem;
+            letter-spacing: -0.02em;
             font-weight: 700;
             color: var(--text-main);
-            word-break: break-all;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border-light);
         }
-
         .metric-sub {
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            line-height: 1.4;
+            font-size: 0.84rem;
+            color: #475569;
+            line-height: 1.5;
+            flex-grow: 1;
         }
-
         .price-badge-group {
             display: flex;
             gap: 6px;
             flex-wrap: wrap;
-            margin-top: 6px;
+            margin-top: 4px;
         }
-
         .price-badge {
-            display: inline-block;
-            font-family: ui-monospace, SFMono-Regular, monospace;
-            font-size: 0.6875rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.74rem;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+        .price-ln { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+        .price-usdc { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .price-free { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+
+        /* Engineering Guarantees Grid */
+        .guarantees-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+        .guarantee-card {
+            background: #ffffff;
+            border: 1px solid var(--border-light);
+            border-radius: 10px;
+            padding: 16px;
+        }
+        .guarantee-label {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.7rem;
             font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 6px;
-            width: fit-content;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent-blue);
+            margin-bottom: 6px;
+        }
+        .guarantee-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 4px;
+        }
+        .guarantee-desc {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            line-height: 1.45;
         }
 
-        .price-ln {
-            background-color: rgba(247, 147, 26, 0.12);
-            color: #d97706;
-            border: 1px solid rgba(247, 147, 26, 0.28);
-        }
-
-        .price-usdc {
-            background-color: rgba(37, 99, 235, 0.08);
-            color: #2563eb;
-            border: 1px solid rgba(37, 99, 235, 0.25);
-        }
-
-        .price-free {
-            background-color: #ecfdf5;
-            color: #059669;
-            border: 1px solid #a7f3d0;
-        }
-
-        /* Terminal Window Inside Showcase (Exact sovroute.com DNA) */
+        /* Tabbed Terminal Block */
         .terminal-box {
-            max-width: 860px;
-            margin: 0 auto 48px auto;
-            background-color: #0f172a;
-            border: 1px solid #1e293b;
-            border-radius: 14px;
+            background: #0f172a;
+            border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 12px 28px -6px rgba(15, 23, 42, 0.18);
-            text-align: left;
+            margin-bottom: 40px;
+            box-shadow: 0 14px 36px rgba(15, 23, 42, 0.14);
+            border: 1px solid #1e293b;
         }
-
         .terminal-header {
-            background-color: #1e293b;
+            background: #1e293b;
             padding: 10px 16px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid #334155;
+            gap: 12px;
+            flex-wrap: wrap;
         }
-
-        .terminal-dots {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .terminal-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-        }
-
-        .dot-red { background-color: #ef4444; }
-        .dot-yellow { background-color: #f59e0b; }
-        .dot-green { background-color: #10b981; }
-
-        .terminal-pill {
-            font-family: ui-monospace, SFMono-Regular, monospace;
-            font-size: 0.6875rem;
-            color: #94a3b8;
-            background: #0f172a;
-            padding: 2px 10px;
-            border-radius: 4px;
-            border: 1px solid #334155;
-        }
-
-        .terminal-body {
-            padding: 20px 24px;
+        .terminal-left { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1; }
+        .terminal-dots { display: flex; gap: 6px; flex: none; }
+        .terminal-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .dot-red { background: #ef4444; }
+        .dot-yellow { background: #f59e0b; }
+        .dot-green { background: #10b981; }
+        .terminal-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+        .term-tab {
+            position: relative;
+            flex: none;
             font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-            font-size: 0.8125rem;
-            line-height: 1.6;
+            font-size: 0.72rem;
+            color: #94a3b8;
+            background: transparent;
+            border: 1px solid transparent;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+        }
+        .term-tab:hover { color: #e2e8f0; background: rgba(255,255,255,0.05); }
+        .term-tab.active,
+        .term-tab[aria-selected="true"] {
+            color: #f8fafc;
+            background: #0f172a;
+            border-color: #334155;
+        }
+        .term-tab[aria-selected="true"]::after {
+            content: "";
+            position: absolute;
+            inset: auto 8px 0;
+            border-block-end: 2px solid #38bdf8;
+        }
+        .copy-btn {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.7rem;
             color: #cbd5e1;
+            background: #0f172a;
+            border: 1px solid #334155;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .copy-btn:hover { border-color: #64748b; color: #ffffff; }
+        .terminal-body {
+            padding: 20px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.8rem;
+            color: #e2e8f0;
+            line-height: 1.65;
             overflow-x: auto;
         }
+        .term-panel { display: none; }
+        .term-panel.active { display: block; }
+        .cmd-comment { color: #64748b; }
+        .cmd-line { color: #38bdf8; }
+        .cmd-val { color: #a7f3d0; }
 
-        .cmd-line {
-            color: #38bdf8;
-            font-weight: 600;
-        }
-
-        .cmd-comment {
-            color: #64748b;
-        }
-
-        .cmd-val {
-            color: #f59e0b;
-        }
-
-        /* Footer (Exact sovroute.com DNA) */
+        /* Footer */
         footer {
             border-top: 1px solid var(--border-light);
-            padding: 32px 0 48px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 16px;
+            padding: 36px 0 48px 0;
             font-size: 0.8125rem;
             color: var(--text-muted);
         }
-
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr;
+            gap: 28px;
+            margin-bottom: 24px;
+        }
         .footer-brand {
             display: flex;
             align-items: center;
             gap: 8px;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--text-main);
+            margin-bottom: 8px;
         }
-
-        .footer-links {
+        .footer-col-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-main);
+            margin-bottom: 10px;
+        }
+        .footer-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+        .footer-list a { color: var(--text-muted); text-decoration: none; }
+        .footer-list a:hover { color: var(--accent-blue); }
+        .footer-bottom {
+            padding-top: 18px;
+            border-top: 1px solid var(--border-light);
             display: flex;
-            gap: 16px;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 0.75rem;
+            color: var(--text-mono);
         }
 
-        .footer-links a {
-            color: var(--text-muted);
-            text-decoration: none;
-            transition: color 0.15s ease;
+        @media (max-width: 860px) {
+            .nav-links { display: none; }
         }
-
-        .footer-links a:hover {
-            color: var(--accent-blue);
+        @media (max-width: 780px) {
+            .teaser-metrics-grid { grid-template-columns: 1fr; }
+            .guarantees-grid { grid-template-columns: repeat(2, 1fr); }
+            .footer-grid { grid-template-columns: 1fr; }
+            h1.hero-title { font-size: 1.85rem; }
         }
+        @media (max-width: 480px) {
+            .guarantees-grid { grid-template-columns: 1fr; }
+        }${renderCrewAiLiveStyles()}
     </style>
 </head>
 <body>
+    <nav class="topbar">
+        <div class="topbar-inner">
+            <a href="/" class="nav-brand">
+                <img src="https://sovroute.com/assets/sovroute-logo.png" alt="SovRoute">
+                <span>SovRoute</span>
+                <span class="nav-pill">Node Engine</span>
+            </a>
+            <div class="nav-links">
+                <a href="#endpoints">Endpoints</a>
+                <a href="#crewai">CrewAI Live</a>
+                <a href="#architecture">Architecture</a>
+                <a href="#quickstart">Quickstart</a>
+                <a href="https://sovroute.com" target="_blank" rel="noopener">Core Gateway &rarr;</a>
+            </div>
+            <div class="nav-status" id="nav-health-pill">
+                <span class="status-dot"></span>
+                <span id="nav-health-text">MAINNET &middot; SYNCED</span>
+            </div>
+        </div>
+    </nav>
 
     <div class="container">
         <header>
-            <div class="hero-brand">
-                <img src="https://sovroute.com/assets/sovroute-logo.png" alt="SovRoute Logo" class="hero-brand-logo">
-                <h1 class="logo">Sovereign Node Engine</h1>
-            </div>
-            <span class="eyebrow">sovereign bitcoin core v31.1 &amp; dual-rail settlement (l402 + x402)</span>
-            <p class="hero-desc">Trust-minimized, direct-from-node Bitcoin forensics &amp; consensus simulation. Real-time BIP-125 RBF double-spend screening, candidate block template X-Ray, zero-broadcast consensus dry-run, and mempool entropy queryable on-the-fly via HTTP 402.</p>
-            <p class="hero-sub">direct bitcoind v31.1 rpc &middot; dual-rail (lightning l402 + base usdc x402) &middot; zero account requirement &middot; &lt;0.05ms cache</p>
-            
+            <span class="eyebrow">Bare-Metal Bitcoin Core v31.1 &amp; EVM Forensics &middot; HTTP 402</span>
+            <h1 class="hero-title">Sovereign Node Intelligence Engine</h1>
+            <p class="hero-desc">
+                Trust-minimized blockchain forensics and execution safety for autonomous AI agents. Real-time BIP-125 RBF screening, candidate block X-Ray, zero-broadcast consensus simulation, and EIP-7702 AuthTx scanning over Triple-Rail (MPP + L402 + x402).
+            </p>
+            <p class="hero-sub">direct bitcoind v31.1 + phoenixd &middot; MPP + L402 lightning + x402 base usdc &middot; &lt;0.05ms cache &middot; zero accounts</p>
+
             <div class="cta-group">
                 <a href="#endpoints" class="btn btn-primary">Explore Endpoints &rarr;</a>
-                <a href="https://www.npmjs.com/package/@aipp/sovereign-node-mcp" class="btn btn-secondary" target="_blank" style="border-color: #cb3837; color: #cb3837; font-weight: 600; background-color: #fff5f5;">📦 MCP Server (npm v1.0.2)</a>
-                <a href="/omni-test" class="btn btn-secondary" style="border-color: #2563eb; color: #2563eb; font-weight: 600;">⚡ Live Wallet Console (/omni-test)</a>
-                <a href="/openapi.json" class="btn btn-secondary" target="_blank">OpenAPI 3.1 Spec</a>
-                <a href="/llms.txt" class="btn btn-secondary" target="_blank">llms.txt</a>
-                <a href="https://sovroute.com" class="btn btn-secondary" target="_blank">Main Gateway (sovroute.com) &rarr;</a>
+                <a href="#quickstart" class="btn btn-secondary">API Quickstart &amp; MCP</a>
+            </div>
+
+            <div class="spec-strip">
+                <a href="/openapi.json" target="_blank">OpenAPI 3.1</a>
+                <span>&middot;</span>
+                <a href="/llms.txt" target="_blank">llms.txt</a>
+                <span>&middot;</span>
+                <a href="/.well-known/x402.json" target="_blank">x402 Bazaar</a>
+                <span>&middot;</span>
+                <a href="/mcp-config.json" target="_blank">mcp-config.json</a>
+                <span>&middot;</span>
+                <a href="https://www.npmjs.com/package/@aipp/sovereign-node-mcp" target="_blank">@aipp/sovereign-node-mcp</a>
             </div>
         </header>
 
         <main>
-            <!-- Node Status & Live Capability Grid (Exact SovRoute Card Style) -->
             <section id="endpoints">
                 <div class="app-teaser-card">
                     <div class="teaser-header">
-                        <div class="teaser-badge">
+                        <div class="teaser-badge" id="card-health-badge">
                             <span class="status-dot"></span>
-                            LIVE MAINNET &middot; BLOCK TIP SYNCED
+                            <span id="card-health-text">LIVE MAINNET &middot; NODE SYNCED</span>
                         </div>
-                        <span class="teaser-rate">Bitcoind 31.1 &amp; Phoenixd Synced (&lt;0.05 ms cache)</span>
+                        <span class="teaser-rate" id="card-latency-text">Bitcoind 31.1 &amp; Phoenixd (&lt;0.05 ms cache)</span>
                     </div>
 
-                    <h2 class="teaser-title">Verified Bitcoin Forensics &amp; Dual-Rail Intelligence</h2>
+                    <h2 class="teaser-title">Verified Bitcoin &amp; EVM Forensics &middot; Triple-Rail Intelligence</h2>
                     <p class="teaser-desc">
-                        Built for autonomous AI agents requiring instantaneous 0-conf double-spend fraud screening, live candidate block cutoff fee rates, zero-broadcast consensus simulation, and deep mempool entropy.
+                        Pay-per-call cryptographic endpoints backed directly by our bare-metal Bitcoin Core v31.1 fullnode and EVM bytecode scanner. All endpoints settle atomically via MPP (Machine Payments Protocol), L402 Lightning, or Base USDC x402 v2.
                     </p>
 
+                    <div class="filter-tabs" role="tablist" aria-label="Endpoint categories">
+                        <button type="button" role="tab" aria-selected="true" class="filter-tab active" data-filter="all">All Endpoints (15)</button>
+                        <button type="button" role="tab" aria-selected="false" class="filter-tab" data-filter="btc">Bitcoin Intelligence (6)</button>
+                        <button type="button" role="tab" aria-selected="false" class="filter-tab" data-filter="evm">EVM Security (2)</button>
+                        <button type="button" role="tab" aria-selected="false" class="filter-tab" data-filter="intel">Market Oracles (4)</button>
+                        <button type="button" role="tab" aria-selected="false" class="filter-tab" data-filter="bridge">Cross-Chain Bridge (1)</button>
+                        <button type="button" role="tab" aria-selected="false" class="filter-tab" data-filter="sys">MCP &amp; System (2)</button>
+                    </div>
+
                     <div class="teaser-metrics-grid">
-                        <!-- Metric 1: RBF Shield -->
-                        <div class="teaser-metric">
-                            <div class="metric-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        <div class="teaser-metric" data-cat="btc">
+                            <div class="metric-top">
+                                <span class="method-tag method-get">GET</span>
+                                <button type="button" class="copy-icon-btn" title="Copy full endpoint URL" aria-label="Copy full URL for rbf-shield" data-copy="https://node.sovroute.com/v1/chain/btc/rbf-shield/{txid}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="copy-label">URL</span></button>
                             </div>
                             <div class="metric-title">/v1/chain/btc/rbf-shield/:txid</div>
-                            <div class="metric-sub">0-Conf BIP-125 RBF double-spend fraud shield, ancestor package fee rate &amp; UTXO confirmation check</div>
+                            <div class="metric-sub">Detects 0-conf double-spend risk, BIP-125 replaceability, and UTXO confirmation status.</div>
                             <div class="price-badge-group">
                                 <span class="price-badge price-ln">5 sats L402</span>
                                 <span class="price-badge price-usdc">$0.005 Base USDC</span>
                             </div>
                         </div>
 
-                        <!-- Metric 2: Next-Block X-Ray -->
-                        <div class="teaser-metric">
-                            <div class="metric-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                        <div class="teaser-metric" data-cat="btc">
+                            <div class="metric-top">
+                                <span class="method-tag method-get">GET</span>
+                                <button type="button" class="copy-icon-btn" title="Copy full endpoint URL" aria-label="Copy full URL for next-block-xray" data-copy="https://node.sovroute.com/v1/chain/btc/next-block-xray"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="copy-label">URL</span></button>
                             </div>
                             <div class="metric-title">/v1/chain/btc/next-block-xray</div>
-                            <div class="metric-sub">Live miner candidate block template (<code>getblocktemplate</code>) cutoff fee rate, whale transactions &amp; queue rank</div>
+                            <div class="metric-sub">Inspects live miner block template for cutoff fee rate and exact queue rank.</div>
                             <div class="price-badge-group">
                                 <span class="price-badge price-ln">3 sats L402</span>
                                 <span class="price-badge price-usdc">$0.003 Base USDC</span>
                             </div>
                         </div>
 
-                        <!-- Metric 3: Simulate-TX -->
-                        <div class="teaser-metric">
-                            <div class="metric-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        <div class="teaser-metric" data-cat="btc">
+                            <div class="metric-top">
+                                <span class="method-tag method-post">POST</span>
+                                <button type="button" class="copy-icon-btn" title="Copy full endpoint URL" aria-label="Copy full URL for simulate-tx" data-copy="https://node.sovroute.com/v1/chain/btc/simulate-tx"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="copy-label">URL</span></button>
                             </div>
                             <div class="metric-title">/v1/chain/btc/simulate-tx</div>
-                            <div class="metric-sub">Zero-broadcast (<strong style="color:#10b981;">0% P2P leak</strong>) Bitcoin Core v31.1 consensus &amp; script dry-run simulator</div>
+                            <div class="metric-sub">Dry-runs raw transaction scripts against live UTXO state with 0% P2P broadcast.</div>
                             <div class="price-badge-group">
                                 <span class="price-badge price-ln">5 sats L402</span>
                                 <span class="price-badge price-usdc">$0.005 Base USDC</span>
                             </div>
                         </div>
 
-                        <!-- Metric 4: Mempool Entropy -->
-                        <div class="teaser-metric">
-                            <div class="metric-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" style="fill: #10b981;"/></svg>
+                        <div class="teaser-metric" data-cat="btc">
+                            <div class="metric-top">
+                                <span class="method-tag method-get">GET</span>
+                                <button type="button" class="copy-icon-btn" title="Copy full endpoint URL" aria-label="Copy full URL for mempool" data-copy="https://node.sovroute.com/v1/chain/btc/mempool"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="copy-label">URL</span></button>
                             </div>
                             <div class="metric-title">/v1/chain/btc/mempool</div>
-                            <div class="metric-sub">Deep mempool backlog entropy, live fee pressure tiers &amp; dynamic congestion engine</div>
+                            <div class="metric-sub">Real-time mempool backlog size, fee pressure tiers, and network congestion level.</div>
                             <div class="price-badge-group">
                                 <span class="price-badge price-ln">2 sats L402</span>
                                 <span class="price-badge price-usdc">$0.002 Base USDC</span>
                             </div>
                         </div>
 
-                        <!-- Metric 5: Health / Tip -->
-                        <div class="teaser-metric">
-                            <div class="metric-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                        <div class="teaser-metric" data-cat="btc">
+                            <div class="metric-top">
+                                <span class="method-tag method-get">GET</span>
+                                <button type="button" class="copy-icon-btn" title="Copy full endpoint URL" aria-label="Copy full URL for fees" data-copy="https://node.sovroute.com/v1/chain/btc/fees"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="copy-label">URL</span></button>
+                            </div>
+                            <div class="metric-title">/v1/chain/btc/fees</div>
+                            <div class="metric-sub">Live Bitcoin Core smart fee estimates (sat/vB) for 1–2 block and 6 block targets.</div>
+                            <div class="price-badge-group">
+                                <span class="price-badge price-ln">1 sat L402</span>
+                                <span class="price-badge price-usdc">$0.001 Base USDC</span>
+                            </div>
+                        </div>
+
+                        <div class="teaser-metric" data-cat="btc">
+                            <div class="metric-top">
+                                <span class="method-tag method-get">GET</span>
+                                <button type="button" class="copy-icon-btn" title="Copy full endpoint URL" aria-label="Copy full URL for block" data-copy="https://node.sovroute.com/v1/chain/btc/block"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="copy-label">URL</span></button>
+                            </div>
+                            <div class="metric-title">/v1/chain/btc/block</div>
+                            <div class="metric-sub">Verified Bitcoin Mainnet chain tip height, block hash, difficulty, and timestamp.</div>
+                            <div class="price-badge-group">
+                                <span class="price-badge price-ln">1 sat L402</span>
+                                <span class="price-badge price-usdc">$0.001 Base USDC</span>
+                            </div>
+                        </div>
+
+                        <div class="teaser-metric" data-cat="evm">
+                            <div class="metric-top">
+                                <span class="method-tag method-post">POST</span>
+                                <button type="button" class="copy-icon-btn" title="Copy full endpoint URL" aria-label="Copy full URL for eip7702-shield" data-copy="https://node.sovroute.com/v1/chain/evm/eip7702-shield"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="copy-label">URL</span></button>
+                            </div>
+                            <div class="metric-title">/v1/chain/evm/eip7702-shield</div>
+                            <div class="metric-sub">Scans Pectra EIP-7702 delegations for drainer opcodes and cross-chain replay risk.</div>
+                            <div class="price-badge-group">
+                                <span class="price-badge price-ln">5 sats L402</span>
+                                <span class="price-badge price-usdc">$0.005 Base USDC</span>
+                            </div>
+                        </div>
+
+                        <div class="teaser-metric" data-cat="evm">
+                            <div class="metric-top">
+                                <span class="method-tag method-post">POST</span>
+                                <button type="button" class="copy-icon-btn" title="Copy full endpoint URL" aria-label="Copy full URL for bytecode-risk-ml" data-copy="https://node.sovroute.com/v1/chain/evm/bytecode-risk-ml"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="copy-label">URL</span></button>
+                            </div>
+                            <div class="metric-title">/v1/chain/evm/bytecode-risk-ml</div>
+                            <div class="metric-sub">PyTorch ONNX neural network classifier scoring EVM bytecode or contract addresses for drainer patterns.</div>
+                            <div class="price-badge-group">
+                                <span class="price-badge price-ln">5 sats L402</span>
+                                <span class="price-badge price-usdc">$0.005 Base USDC</span>
+                            </div>
+                        </div>
+
+                        <div class="teaser-metric" data-cat="bridge">
+                            <div class="metric-top">
+                                <span class="method-tag method-post">POST</span>
+                                <button type="button" class="copy-icon-btn" title="Copy full endpoint URL" aria-label="Copy full URL for pay-lightning" data-copy="https://node.sovroute.com/v1/omni/pay-lightning"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="copy-label">URL</span></button>
+                            </div>
+                            <div class="metric-title">/v1/omni/pay-lightning</div>
+                            <div class="metric-sub">SUB-LIG cross-chain bridge settling BOLT-11 Lightning invoices via Solana (SOL/USDC) or EVM (Base/Arbitrum).</div>
+                            <div class="price-badge-group">
+                                <span class="price-badge price-ln">25 sats L402</span>
+                                <span class="price-badge price-usdc">$0.025 Omni-Rail</span>
+                            </div>
+                        </div>
+
+                        <div class="teaser-metric" data-cat="intel">
+                            <div class="metric-top">
+                                <span class="method-tag method-get">GET</span>
+                                <button type="button" class="copy-icon-btn" title="Copy full endpoint URL" aria-label="Copy full URL for microstructure" data-copy="https://node.sovroute.com/v1/intel/microstructure?symbol=BTC"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="copy-label">URL</span></button>
+                            </div>
+                            <div class="metric-title">/v1/intel/microstructure</div>
+                            <div class="metric-sub">Zero-wait in-memory orderbook imbalance, cross-exchange spread (bps), 1m/5m CVD, funding and liquidation cascade score across Binance, Bybit, OKX &amp; Hyperliquid.</div>
+                            <div class="price-badge-group">
+                                <span class="price-badge price-ln">3 sats L402</span>
+                                <span class="price-badge price-usdc">$0.003 Base USDC</span>
+                            </div>
+                        </div>
+
+                        <div class="teaser-metric" data-cat="intel">
+                            <div class="metric-top">
+                                <span class="method-tag method-get">GET</span>
+                                <button type="button" class="copy-icon-btn" title="Copy full endpoint URL" aria-label="Copy full URL for polymarket-edge" data-copy="https://node.sovroute.com/v1/intel/polymarket-edge?asset=BTC"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="copy-label">URL</span></button>
+                            </div>
+                            <div class="metric-title">/v1/intel/polymarket-edge</div>
+                            <div class="metric-sub">Live Polymarket CLOB orderbook probabilities and Gamma 24h volume paired with real-time 4-exchange spot price and orderbook imbalance.</div>
+                            <div class="price-badge-group">
+                                <span class="price-badge price-ln">4 sats L402</span>
+                                <span class="price-badge price-usdc">$0.004 Base USDC</span>
+                            </div>
+                        </div>
+
+                        <div class="teaser-metric" data-cat="intel">
+                            <div class="metric-top">
+                                <span class="method-tag method-get">GET</span>
+                                <button type="button" class="copy-icon-btn" title="Copy full endpoint URL" aria-label="Copy full URL for funding-arb" data-copy="https://node.sovroute.com/v1/intel/funding-arb?symbol=BTC"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="copy-label">URL</span></button>
+                            </div>
+                            <div class="metric-title">/v1/intel/funding-arb</div>
+                            <div class="metric-sub">Cross-exchange funding rate carry (APR) and Binance spot-to-perp basis across Binance, Bybit &amp; OKX in RAM.</div>
+                            <div class="price-badge-group">
+                                <span class="price-badge price-ln">3 sats L402</span>
+                                <span class="price-badge price-usdc">$0.003 Base USDC</span>
+                            </div>
+                        </div>
+
+                        <div class="teaser-metric" data-cat="intel">
+                            <div class="metric-top">
+                                <span class="method-tag method-get">GET</span>
+                                <button type="button" class="copy-icon-btn" title="Copy full endpoint URL" aria-label="Copy full URL for options-skew" data-copy="https://node.sovroute.com/v1/intel/options-skew?asset=BTC"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="copy-label">URL</span></button>
+                            </div>
+                            <div class="metric-title">/v1/intel/options-skew</div>
+                            <div class="metric-sub">Live Deribit DVOL index, CALM/ELEVATED/PANIC regime, ATM IV, OTM put-call skew and options OI ratio.</div>
+                            <div class="price-badge-group">
+                                <span class="price-badge price-ln">4 sats L402</span>
+                                <span class="price-badge price-usdc">$0.004 Base USDC</span>
+                            </div>
+                        </div>
+
+                        <div class="teaser-metric" data-cat="sys">
+                            <div class="metric-top">
+                                <span class="method-tag method-post">POST</span>
+                                <button type="button" class="copy-icon-btn" title="Copy full endpoint URL" aria-label="Copy full URL for Remote MCP" data-copy="https://node.sovroute.com/mcp"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="copy-label">URL</span></button>
+                            </div>
+                            <div class="metric-title">/mcp</div>
+                            <div class="metric-sub">Remote Streamable HTTP MCP: 8 deterministic pre-flight guardrails for CrewAI, Claude &amp; Cursor.</div>
+                            <div class="price-badge-group">
+                                <span class="price-badge price-free">15 FREE/DAY</span>
+                                <span class="price-badge price-ln">1-5 sats L402</span>
+                                <span class="price-badge price-usdc">$0.001-$0.005 x402</span>
+                            </div>
+                        </div>
+
+                        <div class="teaser-metric" data-cat="sys">
+                            <div class="metric-top">
+                                <span class="method-tag method-get">GET</span>
+                                <button type="button" class="copy-icon-btn" title="Copy full endpoint URL" aria-label="Copy full URL for health" data-copy="https://node.sovroute.com/health"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="copy-label">URL</span></button>
                             </div>
                             <div class="metric-title">/health</div>
-                            <div class="metric-sub">Public Bitcoin Core v31.1 sync, height, tip status &amp; dual-rail health check</div>
+                            <div class="metric-sub">Public bare-metal node synchronization, liveness, and Triple-Rail gateway status.</div>
                             <div class="price-badge-group">
                                 <span class="price-badge price-free">FREE</span>
                             </div>
                         </div>
                     </div>
+
+                    <div class="agent-copy-bar">
+                        <span class="agent-copy-label">Give to your AI agent:</span>
+                        <div class="agent-copy-actions">
+                            <button type="button" class="agent-copy-pill" data-copy="https://node.sovroute.com/llms.txt" title="Copy llms.txt URL"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>llms.txt</span></button>
+                            <button type="button" class="agent-copy-pill" data-copy="https://node.sovroute.com/openapi.json" title="Copy OpenAPI 3.1 URL"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>OpenAPI 3.1</span></button>
+                            <button type="button" class="agent-copy-pill" data-copy="https://node.sovroute.com/.well-known/x402.json" title="Copy x402 Bazaar Manifest URL"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>x402.json</span></button>
+                            <button type="button" class="agent-copy-pill" data-copy="https://node.sovroute.com/mcp" title="Copy Remote Streamable HTTP MCP URL"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Remote MCP</span></button>
+                            <button type="button" class="agent-copy-pill" data-copy="npx -y @aipp/sovereign-node-mcp" title="Copy MCP command"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>MCP (npx)</span></button>
+                        </div>
+                    </div>
                 </div>
             </section>
 
-            <!-- Architecture Terminal Block (Exact SovRoute Terminal DNA) -->
-            <section id="quickstart">
-                <div class="terminal-box" style="margin-bottom: 24px;">
-                    <div class="terminal-header">
-                        <div class="terminal-dots">
-                            <span class="terminal-dot dot-red"></span>
-                            <span class="terminal-dot dot-yellow"></span>
-                            <span class="terminal-dot dot-green"></span>
-                        </div>
-                        <span class="terminal-pill">Model Context Protocol (MCP) &middot; Claude Desktop &amp; Cursor IDE</span>
+            ${renderCrewAiLiveSectionHtml()}
+
+            <section id="architecture">
+                <div class="guarantees-grid">
+                    <div class="guarantee-card">
+                        <div class="guarantee-label">Ground Truth</div>
+                        <div class="guarantee-title">Bare-Metal Core v31.1</div>
+                        <div class="guarantee-desc">Zero third-party RPC middlemen. Queries served straight from NVMe fullnode with &lt;0.05ms cache.</div>
                     </div>
-                    <div class="terminal-body">
-                        <div class="cmd-comment"># Zero-install direct execution for Anthropic Claude Desktop, Cursor IDE &amp; AI Agents:</div>
-                        <span class="cmd-line">npx</span> -y @aipp/sovereign-node-mcp<br><br>
-                        <div class="cmd-comment"># Public registry: https://www.npmjs.com/package/@aipp/sovereign-node-mcp</div>
-                        <div class="cmd-comment"># Provides 7 live tools: get_next_block_xray, simulate_raw_transaction, check_rbf_fraud_shield, and more</div>
+                    <div class="guarantee-card">
+                        <div class="guarantee-label">Zero-Leak</div>
+                        <div class="guarantee-title">0% P2P Broadcast</div>
+                        <div class="guarantee-desc"><code>simulate-tx</code> validates scripts against live UTXO state without leaking transactions to mempool.</div>
+                    </div>
+                    <div class="guarantee-card">
+                        <div class="guarantee-label">Fault Tolerant</div>
+                        <div class="guarantee-title">500 Retry Voucher</div>
+                        <div class="guarantee-desc">HMAC-signed <code>X-Payment-Retry-Voucher</code> &amp; idempotent nonce recovery protect every paid request.</div>
+                    </div>
+                    <div class="guarantee-card">
+                        <div class="guarantee-label">EVM Pectra</div>
+                        <div class="guarantee-title">EIP-7702 Disassembler</div>
+                        <div class="guarantee-desc">Detects <code>SELFDESTRUCT</code>, unverified <code>DELEGATECALL</code>, drain selectors, and <code>chainId=0</code> replay.</div>
                     </div>
                 </div>
+            </section>
 
+            <section id="quickstart">
                 <div class="terminal-box">
                     <div class="terminal-header">
-                        <div class="terminal-dots">
-                            <span class="terminal-dot dot-red"></span>
-                            <span class="terminal-dot dot-yellow"></span>
-                            <span class="terminal-dot dot-green"></span>
+                        <div class="terminal-left">
+                            <div class="terminal-dots">
+                                <span class="terminal-dot dot-red"></span>
+                                <span class="terminal-dot dot-yellow"></span>
+                                <span class="terminal-dot dot-green"></span>
+                            </div>
+                            <div class="terminal-tabs" role="tablist" aria-label="Code examples">
+                                <button type="button" role="tab" aria-selected="true" class="term-tab active" data-tab="xray">Next-Block X-Ray (GET)</button>
+                                <button type="button" role="tab" aria-selected="false" class="term-tab" data-tab="eip7702">EIP-7702 Shield (POST)</button>
+                                <button type="button" role="tab" aria-selected="false" class="term-tab" data-tab="mcp">MCP Server (HTTP / npx)</button>
+                            </div>
                         </div>
-                        <span class="terminal-pill">HTTP 402 &middot; Dual-Rail Protocol (L402 Lightning + x402 Base USDC)</span>
+                        <button type="button" class="copy-btn" id="copy-term-btn">Copy</button>
                     </div>
                     <div class="terminal-body">
-                        <div class="cmd-comment"># 1. Probe protected forensics endpoint (e.g. Next-Block Candidate Template X-Ray)</div>
-                        <span class="cmd-line">curl</span> -i https://node.sovroute.com/v1/chain/btc/next-block-xray<br><br>
-                        <div class="cmd-comment"># HTTP/1.1 402 Payment Required</div>
-                        <div class="cmd-comment"># Www-Authenticate: L402 macaroon="...", invoice="lnbc30n..."</div>
-                        <div class="cmd-comment"># Payment-Required: eyJ4NDAyVmVyc2lvbiI6Mi... (Base USDC x402 v2 Spec)</div><br>
-                        <div class="cmd-comment"># ── RAIL 1: Native Lightning Network (L402) ──</div>
-                        <div class="cmd-comment"># Pay 3 sats via Alby / Phoenixd / NWC to obtain preimage (R), then fetch:</div>
-                        <span class="cmd-line">curl</span> -H <span class="cmd-val">"Authorization: L402 &lt;macaroon&gt;:&lt;preimage&gt;"</span> https://node.sovroute.com/v1/chain/btc/next-block-xray<br><br>
-                        <div class="cmd-comment"># ── RAIL 2: Base L2 USDC (x402 EIP-3009 Gasless) ──</div>
-                        <div class="cmd-comment"># Sign $0.003 USDC authorization (0 Gas) and fetch with Payment-Signature:</div>
-                        <span class="cmd-line">curl</span> -H <span class="cmd-val">"Payment-Signature: &lt;base64_eip3009_payload&gt;"</span> https://node.sovroute.com/v1/chain/btc/next-block-xray
+                        <div class="term-panel active" id="panel-xray">
+<div class="cmd-comment"># 1. Probe protected forensics endpoint (returns HTTP 402 with MPP + L402 + x402 challenges)</div>
+<span class="cmd-line">curl</span> -i https://node.sovroute.com/v1/chain/btc/next-block-xray<br><br>
+<div class="cmd-comment"># 2A. Settle via Machine Payments Protocol (MPP draft-lightning-charge-00)</div>
+<span class="cmd-line">curl</span> -H <span class="cmd-val">"Authorization: Payment &lt;base64url_mpp_token&gt;"</span> https://node.sovroute.com/v1/chain/btc/next-block-xray<br><br>
+<div class="cmd-comment"># 2B. Settle via Lightning L402</div>
+<span class="cmd-line">curl</span> -H <span class="cmd-val">"Authorization: L402 &lt;macaroon&gt;:&lt;preimage&gt;"</span> https://node.sovroute.com/v1/chain/btc/next-block-xray<br><br>
+<div class="cmd-comment"># 2C. Settle via Base L2 USDC (x402 / MPP draft-usdc-charge-00)</div>
+<span class="cmd-line">curl</span> -H <span class="cmd-val">"Payment-Signature: &lt;base64_eip3009_payload&gt;"</span> https://node.sovroute.com/v1/chain/btc/next-block-xray
+                        </div>
+                        <div class="term-panel" id="panel-eip7702">
+<div class="cmd-comment"># Inspect EIP-7702 authorization_list for drainer opcodes &amp; chainId=0 cross-chain replay</div>
+<span class="cmd-line">curl</span> -X POST https://node.sovroute.com/v1/chain/evm/eip7702-shield \\<br>
+&nbsp;&nbsp;-H <span class="cmd-val">"Content-Type: application/json"</span> \\<br>
+&nbsp;&nbsp;-H <span class="cmd-val">"Payment-Signature: &lt;base64_eip3009_payload&gt;"</span> \\<br>
+&nbsp;&nbsp;-d <span class="cmd-val">'{"executionChainId":8453,"authorizationList":[{"chainId":8453,"address":"0x63c0c19a282a1b52b07dd5a65b58948a07dae32b","nonce":0}]}'</span>
+                        </div>
+                        <div class="term-panel" id="panel-mcp">
+<div class="cmd-comment"># Option A: CrewAI 1.x Native 1-Line Remote Streamable HTTP MCP (Zero Wallet Setup)</div>
+<span class="cmd-line">Agent</span>(role=<span class="cmd-val">"Security Analyst"</span>, mcps=[<span class="cmd-val">"https://node.sovroute.com/mcp"</span>])<br><br>
+<div class="cmd-comment"># Option B: Local Stdio MCP for Claude Desktop, Cursor IDE &amp; AI Agents</div>
+<span class="cmd-line">npx</span> -y @aipp/sovereign-node-mcp<br><br>
+<div class="cmd-comment"># 8 deterministic tools: inspect_eip7702_authorization, check_rbf_fraud_shield, get_next_block_xray,</div>
+<div class="cmd-comment"># simulate_raw_transaction, get_bitcoin_smart_fees, get_mempool_entropy, verify_block_header, pay_lightning_invoice</div>
+                        </div>
                     </div>
                 </div>
             </section>
         </main>
 
         <footer>
-            <div class="footer-brand">
-                <img src="https://sovroute.com/assets/sovroute-logo.png" alt="SovRoute" style="height: 20px; width: auto;">
-                <span>SovRoute Infrastructure &middot; Node Cluster</span>
+            <div class="footer-grid">
+                <div>
+                    <div class="footer-brand">
+                        <img src="https://sovroute.com/assets/sovroute-logo.png" alt="SovRoute" style="height: 20px; width: auto;">
+                        <span>SovRoute Node Engine</span>
+                    </div>
+                    <p style="font-size: 0.8rem; line-height: 1.5; max-width: 300px;">
+                        Independent bare-metal Bitcoin Core v31.1 &amp; EVM security oracle for autonomous AI agents.
+                    </p>
+                </div>
+                <div>
+                    <div class="footer-col-title">Specifications</div>
+                    <ul class="footer-list">
+                        <li><a href="/openapi.json" target="_blank">OpenAPI 3.1 Spec</a></li>
+                        <li><a href="/llms.txt" target="_blank">llms.txt</a></li>
+                        <li><a href="/.well-known/x402.json" target="_blank">x402 Bazaar Manifest</a></li>
+                        <li><a href="/mcp-config.json" target="_blank">MCP Config JSON</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="footer-col-title">Ecosystem</div>
+                    <ul class="footer-list">
+                        <li><a href="https://sovroute.com" target="_blank">SovRoute Core (sovroute.com)</a></li>
+                        <li><a href="https://www.npmjs.com/package/@aipp/sovereign-node-mcp" target="_blank">npm: @aipp/sovereign-node-mcp</a></li>
+                        <li><a href="https://github.com/aipp-key/sovereign-node-mcp" target="_blank">GitHub</a></li>
+                        <li><a href="mailto:contact@sovroute.com">contact@sovroute.com</a></li>
+                    </ul>
+                </div>
             </div>
-            <div class="footer-links">
-                <a href="https://sovroute.com" target="_blank">Main Gateway</a>
-                <a href="/omni-test">Live Wallet Console</a>
-                <a href="/health" target="_blank">Health Status</a>
-                <a href="/openapi.json" target="_blank">OpenAPI 3.1</a>
-                <a href="/llms.txt" target="_blank">llms.txt</a>
-                <a href="https://www.npmjs.com/package/@aipp/sovereign-node-mcp" target="_blank" style="color: #cb3837; font-weight: 600;">npm MCP Package</a>
-                <a href="/mcp-config.json" target="_blank">MCP Config</a>
-                <a href="https://github.com/sovroutecore/sovroute" target="_blank">GitHub</a>
+            <div class="footer-bottom">
+                <span>&copy; 2026 SovRoute Protocol &middot; Non-Custodial &middot; HTTP-402 Native</span>
+                <span>Multi-Rail Settlement: L402 Lightning &middot; Machine Payments Protocol (MPP) &middot; Base USDC x402</span>
             </div>
         </footer>
     </div>
 
+    <script>
+        (function () {
+            const tabs = document.querySelectorAll('.term-tab');
+            const panels = document.querySelectorAll('.term-panel');
+            tabs.forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    tabs.forEach((b) => {
+                        b.classList.remove('active');
+                        b.setAttribute('aria-selected', 'false');
+                    });
+                    panels.forEach((p) => p.classList.remove('active'));
+                    btn.classList.add('active');
+                    btn.setAttribute('aria-selected', 'true');
+                    btn.scrollIntoView({ block: 'nearest', inline: 'nearest', container: 'nearest' });
+                    const target = document.getElementById('panel-' + btn.dataset.tab);
+                    if (target) target.classList.add('active');
+                });
+            });
+
+            const timers = new WeakMap();
+            const copyBtn = document.getElementById('copy-term-btn');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', async () => {
+                    const active = document.querySelector('.term-panel.active');
+                    if (!active) return;
+                    clearTimeout(timers.get(copyBtn));
+                    try {
+                        await navigator.clipboard.writeText(active.innerText);
+                        copyBtn.textContent = 'Copied!';
+                    } catch {
+                        copyBtn.textContent = 'Copy failed';
+                    }
+                    timers.set(copyBtn, setTimeout(() => (copyBtn.textContent = 'Copy'), 1500));
+                });
+            }
+
+            const filterTabs = document.querySelectorAll('.filter-tab');
+            const endpointCards = document.querySelectorAll('.teaser-metric[data-cat]');
+            filterTabs.forEach((tab) => {
+                tab.addEventListener('click', () => {
+                    filterTabs.forEach((t) => {
+                        t.classList.remove('active');
+                        t.setAttribute('aria-selected', 'false');
+                    });
+                    tab.classList.add('active');
+                    tab.setAttribute('aria-selected', 'true');
+                    tab.scrollIntoView({ block: 'nearest', inline: 'nearest', container: 'nearest' });
+                    const filter = tab.getAttribute('data-filter');
+                    endpointCards.forEach((card) => {
+                        const show = filter === 'all' || card.getAttribute('data-cat') === filter;
+                        card.style.display = show ? 'flex' : 'none';
+                    });
+                });
+            });
+
+            const copySvg = '<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+            const checkSvg = '<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+            document.querySelectorAll('[data-copy]').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    const text = btn.getAttribute('data-copy');
+                    if (!text) return;
+                    clearTimeout(timers.get(btn));
+                    const svg = btn.querySelector('svg');
+                    const labelEl = btn.querySelector('.copy-label');
+                    const defaultLabel = btn.getAttribute('data-default-label') || 'URL';
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        if (svg) svg.outerHTML = checkSvg;
+                        if (labelEl) labelEl.textContent = 'Copied';
+                        btn.classList.add('copied');
+                        timers.set(btn, setTimeout(() => {
+                            const cur = btn.querySelector('svg');
+                            if (cur) cur.outerHTML = copySvg;
+                            if (labelEl) labelEl.textContent = defaultLabel;
+                            btn.classList.remove('copied');
+                        }, 1400));
+                    } catch {
+                        if (labelEl) {
+                            labelEl.textContent = 'Failed';
+                            timers.set(btn, setTimeout(() => {
+                                labelEl.textContent = defaultLabel;
+                            }, 1400));
+                        }
+                    }
+                });
+            });
+
+            async function probeHealth() {
+                const t0 = performance.now();
+                try {
+                    const res = await fetch('/health', { cache: 'no-store' });
+                    const ms = Math.round(performance.now() - t0);
+                    const data = await res.json();
+                    if (data && data.status === 'UP') {
+                        const navTxt = document.getElementById('nav-health-text');
+                        const cardTxt = document.getElementById('card-health-text');
+                        const latTxt = document.getElementById('card-latency-text');
+                        if (navTxt) navTxt.textContent = 'MAINNET · LIVE (' + ms + 'ms)';
+                        if (cardTxt) cardTxt.textContent = data.nodeSynced ? 'LIVE MAINNET · NODE SYNCED' : 'LIVE MAINNET · SYNCING';
+                        if (latTxt) latTxt.textContent = 'Bitcoind 31.1 & Phoenixd (' + ms + 'ms probe)';
+                    }
+                } catch {}
+            }
+            probeHealth();${renderCrewAiLiveScript()}
+        })();
+    </script>
 </body>
 </html>`;
 }

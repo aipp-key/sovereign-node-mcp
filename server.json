@@ -1,55 +1,62 @@
 {
-  "$schema": "https://modelcontextprotocol.io/schemas/server.json",
-  "name": "sovereign-node-engine",
-  "title": "Sovereign Node Engine",
-  "description": "Zero-trust Bitcoin Core v31.1 Intelligence, 0-Conf RBF Forensics, and Consensus Simulation for AI Agents.",
-  "version": "1.0.3",
-  "author": {
-    "name": "SovRoute",
-    "email": "contact@sovroute.com",
-    "url": "https://sovroute.com"
-  },
+  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/registry/main/schema/server.json",
+  "name": "io.github.sovroutecore/sovroute-mcp",
+  "title": "SovRoute Sovereign Node Intelligence MCP",
+  "description": "Zero-trust Bitcoin Core v31.1 & Lightning Network mempool forensics, 0-conf RBF double-spend detection, miner template X-Ray, and consensus simulation for autonomous AI agents.",
+  "homepage": "https://node.sovroute.com",
+  "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sovroutecore/sovroute"
+    "url": "https://github.com/aipp-key/sovereign-node-mcp.git"
   },
-  "homepage": "https://node.sovroute.com",
-  "packages": [
+  "package": {
+    "type": "npm",
+    "name": "@aipp/sovereign-node-mcp",
+    "version": "1.0.4"
+  },
+  "transports": [
     {
-      "registry": "npm",
-      "name": "@aipp/sovereign-node-mcp",
-      "version": "1.0.3",
-      "executable": "sovereign-node-mcp"
+      "type": "streamable-http",
+      "url": "https://node.sovroute.com/mcp",
+      "pricing": {
+        "freeTier": "15 evaluation calls/24h per IP",
+        "paid": "Dual-Rail L402 Lightning (1-5 sats) or Base L2 USDC ($0.001-$0.005)"
+      }
+    },
+    {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@aipp/sovereign-node-mcp"]
     }
   ],
   "tools": [
     {
-      "name": "get_next_block_xray",
-      "description": "Inspects live getblocktemplate candidate block to reveal cutoff fee rates and queue rank (GUARANTEED_NEXT_BLOCK vs QUEUED_FOR_LATER)."
-    },
-    {
-      "name": "simulate_raw_transaction",
-      "description": "Zero-broadcast dry-run consensus validator (testmempoolaccept) against live Bitcoin Core v31.1 UTXO set."
-    },
-    {
-      "name": "check_rbf_fraud_shield",
-      "description": "0-Conf BIP-125 RBF double-spend fraud shield. Inspects BIP-125 signaling, unconfirmed ancestor chains, and conflicting spends."
-    },
-    {
       "name": "get_bitcoin_smart_fees",
-      "description": "Real-time estimatesmartfee projections (sat/vB) for fastest and economic confirmation targets."
+      "description": "Bitcoin Core v31.1 real-time smart fee projections (sat/vB) for fastest, half-hour, hour, and economic block targets."
     },
     {
       "name": "get_mempool_entropy",
-      "description": "Real-time Bitcoin mempool statistics (unconfirmed tx count, vsize, total fee pool in sats)."
+      "description": "Direct Bitcoin Mainnet mempool state: unconfirmed tx count, vsize, total fee pool, and congestion level."
     },
     {
       "name": "verify_block_header",
-      "description": "Latest verified Bitcoin Mainnet tip height, block hash, difficulty, and timestamp from bare-metal Core v31.1."
+      "description": "Synchronized Bitcoin Core v31.1 block header truth (height, hash, previousblockhash, merkleroot, bits, nonce, difficulty)."
     },
     {
-      "name": "pay_lightning_invoice",
-      "description": "Autonomously pays any BOLT-11 invoice via configured Lightning wallet and returns preimage."
+      "name": "get_next_block_xray",
+      "description": "Live getblocktemplate miner candidate block X-ray: cutoff fee rate, whale transactions, and queue ranking."
+    },
+    {
+      "name": "check_rbf_fraud_shield",
+      "description": "0-Conf Bitcoin RBF double-spend fraud shield: BIP-125 signaling, conflicting spends, and ancestor depth."
+    },
+    {
+      "name": "simulate_raw_transaction",
+      "description": "Zero-Broadcast Bitcoin Core v31.1 testmempoolaccept consensus & script dry-run simulator."
+    },
+    {
+      "name": "inspect_eip7702_authorization",
+      "description": "Pectra EIP-7702 AuthTx security scanner for wallet drainer bytecode, smart account standards, and replay risks."
     }
   ]
 }

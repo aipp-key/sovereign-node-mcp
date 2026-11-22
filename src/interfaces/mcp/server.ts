@@ -337,6 +337,53 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
     }
   );
 
+  // Tool 8: inspect_eip7702_authorization
+  server.tool(
+    'inspect_eip7702_authorization',
+    'Inspect an EIP-7702 (Pectra) authorization_list for wallet drainer risks, SELFDESTRUCT/DELEGATECALL opcodes, token drain selectors, and cross-chain replay vectors (chainId=0).',
+    {
+      executionChainId: z.number().int().positive().optional().describe('Optional target EVM execution chain ID (e.g. 1, 8453, 42161)'),
+      authorizationList: z
+        .array(
+          z.object({
+            chainId: z.union([z.number().int().nonnegative(), z.string()]).describe('EIP-7702 authorization chainId (0 = wildcard cross-chain replay risk)'),
+            address: z.string().regex(/^0x[0-9a-fA-F]{40}$/).describe('Target delegation contract address'),
+            nonce: z.union([z.number().int().nonnegative(), z.string()]).describe('Account nonce for the authorization'),
+            bytecode: z.string().optional().describe('Optional pre-fetched EVM bytecode hex (0x...)'),
+          })
+        )
+        .min(1)
+        .max(50)
+        .describe('EIP-7702 authorization_list entries to scan'),
+    },
+    async ({ executionChainId, authorizationList }) => {
+      try {
+        if (!agent) {
+          return {
+            isError: true,
+            content: [{ type: 'text', text: 'Error: No Lightning payer configured on this agent.' }],
+          };
+        }
+
+        const data = await agent.fetch(`${sovereignNodeUrl}/v1/chain/evm/eip7702-shield`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ executionChainId, authorizationList }),
+          maxPriceSatsAllowed: maxPriceSats,
+        });
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+        };
+      } catch (error: any) {
+        return {
+          isError: true,
+          content: [{ type: 'text', text: `Failed to inspect EIP-7702 authorization: ${error.message}` }],
+        };
+      }
+    }
+  );
+
   const start = async () => {
     const transport = new StdioServerTransport();
     await server.connect(transport);

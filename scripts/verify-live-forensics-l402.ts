@@ -134,20 +134,106 @@ async function runLiveForensicsVerification() {
   console.log(`  Next Block Cutoff Fee Rate: ${simRes.data.nextBlockCutoffSatPerVb} sat/vB\n`);
 
   // -------------------------------------------------------------
+  // TEST 4: Mempool Entropy (Cost: 2 sats)
+  // -------------------------------------------------------------
+  console.log('----------------------------------------------------------------');
+  console.log('📊 TEST 4: GET /v1/chain/btc/mempool (Price: 2 sats)');
+  console.log('----------------------------------------------------------------');
+  const t4Start = Date.now();
+  const mempoolRes = await agent.fetch(`${GATEWAY_URL}/v1/chain/btc/mempool`, {
+    maxPriceSatsAllowed: 5,
+  });
+  const t4Duration = Date.now() - t4Start;
+  console.log(`✅ Test 4 Succeeded in ${t4Duration}ms!`);
+  console.log(`  txCount: ${mempoolRes.data.txCount} | vsizeBytes: ${mempoolRes.data.vsizeBytes} | congestion: ${mempoolRes.data.congestionLevel}\n`);
+
+  // -------------------------------------------------------------
+  // TEST 5: Smart Fee Projections (Cost: 1 sat)
+  // -------------------------------------------------------------
+  console.log('----------------------------------------------------------------');
+  console.log('⛽ TEST 5: GET /v1/chain/btc/fees (Price: 1 sat)');
+  console.log('----------------------------------------------------------------');
+  const t5Start = Date.now();
+  const feesRes = await agent.fetch(`${GATEWAY_URL}/v1/chain/btc/fees`, {
+    maxPriceSatsAllowed: 5,
+  });
+  const t5Duration = Date.now() - t5Start;
+  console.log(`✅ Test 5 Succeeded in ${t5Duration}ms!`);
+  console.log(`  fastestSatPerVb: ${feesRes.data.fastestSatPerVb} | economicSatPerVb: ${feesRes.data.economicSatPerVb}\n`);
+
+  // -------------------------------------------------------------
+  // TEST 6: Block Header Truth (Cost: 1 sat)
+  // -------------------------------------------------------------
+  console.log('----------------------------------------------------------------');
+  console.log('🧱 TEST 6: GET /v1/chain/btc/block (Price: 1 sat)');
+  console.log('----------------------------------------------------------------');
+  const t6Start = Date.now();
+  const blockRes = await agent.fetch(`${GATEWAY_URL}/v1/chain/btc/block`, {
+    maxPriceSatsAllowed: 5,
+  });
+  const t6Duration = Date.now() - t6Start;
+  console.log(`✅ Test 6 Succeeded in ${t6Duration}ms!`);
+  console.log(`  height: ${blockRes.data.height} | hash: ${blockRes.data.hash}\n`);
+
+  // -------------------------------------------------------------
+  // TEST 7: EIP-7702 AuthTx Shield (Cost: 5 sats)
+  // -------------------------------------------------------------
+  console.log('----------------------------------------------------------------');
+  console.log('🛡️ TEST 7: POST /v1/chain/evm/eip7702-shield (Price: 5 sats)');
+  console.log('----------------------------------------------------------------');
+  const t7Start = Date.now();
+  const eip7702Res = await agent.fetch(`${GATEWAY_URL}/v1/chain/evm/eip7702-shield`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      executionChainId: 8453,
+      authorizationList: [
+        {
+          chainId: 8453,
+          address: '0x63c0c19a282a1b52b07dd5a65b58948a07dae32b',
+          nonce: 0,
+        },
+      ],
+    }),
+    maxPriceSatsAllowed: 10,
+  });
+  const t7Duration = Date.now() - t7Start;
+  console.log(`✅ Test 7 Succeeded in ${t7Duration}ms!`);
+  console.log(`  verdict: ${eip7702Res.data.verdict} | riskScore: ${eip7702Res.data.riskScore}\n`);
+
+  // -------------------------------------------------------------
+  // TEST 8: PyTorch ONNX Bytecode Risk ML (Cost: 5 sats)
+  // -------------------------------------------------------------
+  console.log('----------------------------------------------------------------');
+  console.log('🧠 TEST 8: POST /v1/chain/evm/bytecode-risk-ml (Price: 5 sats)');
+  console.log('----------------------------------------------------------------');
+  const t8Start = Date.now();
+  const mlRes = await agent.fetch(`${GATEWAY_URL}/v1/chain/evm/bytecode-risk-ml`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bytecode: '0x6080604052326323b872dd63095ea7b3f4ff' }),
+    maxPriceSatsAllowed: 10,
+  });
+  const t8Duration = Date.now() - t8Start;
+  console.log(`✅ Test 8 Succeeded in ${t8Duration}ms!`);
+  console.log(`  mlVerdict: ${mlRes.data.mlVerdict} | mlRiskScore: ${mlRes.data.mlRiskScore} | inferenceMs: ${mlRes.data.inferenceMs}\n`);
+
+  // -------------------------------------------------------------
   // FINAL BALANCE RECONCILIATION
   // -------------------------------------------------------------
   const finalInfo = await getPhoenixdInfo();
   const finalBalance = finalInfo.channels.reduce((acc, c) => acc + c.balanceSat, 0);
   const satsSpent = initialBalance - finalBalance;
+  const totalTimeMs = t1Duration + t2Duration + t3Duration + t4Duration + t5Duration + t6Duration + t7Duration + t8Duration;
 
   console.log('================================================================');
-  console.log('🎉 100% REAL CRYPTO LIVE MAINNET VERIFICATION COMPLETED!');
+  console.log('🎉 100% REAL CRYPTO LIVE MAINNET VERIFICATION (ALL 8 ENDPOINTS) COMPLETED!');
   console.log('================================================================');
   console.log(`🏦 Initial Balance: ${initialBalance} sats`);
   console.log(`🏦 Final Balance:   ${finalBalance} sats`);
-  console.log(`⚡ Total Sats Spent: ${satsSpent} sats (Expected: 13 sats + routing fees)`);
-  console.log(`⏱️ Total Execution Time: ${t1Duration + t2Duration + t3Duration}ms`);
-  console.log('🚀 node.sovroute.com Forensics Trio is 100% PRODUCTION READY!');
+  console.log(`⚡ Total Sats Spent: ${satsSpent} sats (Expected: 27 sats + routing fees)`);
+  console.log(`⏱️ Total Execution Time: ${totalTimeMs}ms`);
+  console.log('🚀 node.sovroute.com All 8 Endpoints are 100% PRODUCTION READY!');
   console.log('================================================================\n');
 }
 

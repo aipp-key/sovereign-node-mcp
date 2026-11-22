@@ -2,6 +2,7 @@ import {
   MempoolEntropy,
   BlockHeaderTruth,
   LightningTopologySignal,
+  LightningNetworkStats,
   SmartFeeProjection,
   RbfShieldAssessment,
   NextBlockXray,
@@ -30,6 +31,13 @@ export class NodeTruthService {
 
   async getLightningTopology(): Promise<LightningTopologySignal> {
     return this.repository.getLightningTopology();
+  }
+
+  async getLightningNetworkStats(): Promise<LightningNetworkStats> {
+    if (!this.repository.getLightningNetworkStats) {
+      throw new Error('getLightningNetworkStats is not implemented by the active repository');
+    }
+    return this.repository.getLightningNetworkStats();
   }
 
   async getNextBlockXray(txid?: string): Promise<NextBlockXray> {

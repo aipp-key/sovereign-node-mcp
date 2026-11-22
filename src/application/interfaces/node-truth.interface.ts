@@ -2,6 +2,7 @@ import {
   MempoolEntropy,
   BlockHeaderTruth,
   LightningTopologySignal,
+  LightningNetworkStats,
   SmartFeeProjection,
   RbfShieldAssessment,
   NextBlockXray,
@@ -14,6 +15,7 @@ export interface INodeTruthRepository {
   checkRbfShield(txid: string): Promise<RbfShieldAssessment>;
   getLatestBlockHeader(): Promise<BlockHeaderTruth>;
   getLightningTopology(): Promise<LightningTopologySignal>;
+  getLightningNetworkStats?(): Promise<LightningNetworkStats>;
   getNextBlockXray?(txid?: string): Promise<NextBlockXray>;
   simulateTxConsensus?(rawTxHex: string): Promise<TxConsensusSimulation>;
 }

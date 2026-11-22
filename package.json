@@ -1,6 +1,6 @@
 {
   "name": "@aipp/sovereign-node-mcp",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Zero-trust Bitcoin Core v31.1 Intelligence & Forensics MCP Server for AI Agents",
   "main": "dist/index.js",
   "publishConfig": {
@@ -43,6 +43,7 @@
     "@types/qrcode": "^1.5.6",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "onnxruntime-node": "^1.31.1",
     "qrcode": "^1.5.4",
     "viem": "^2.23.4",
     "zod": "^3.24.2"

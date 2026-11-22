@@ -91,14 +91,22 @@ export function createOmniRailRouter(
     next();
   });
 
-  // Interactive Browser Live Wallet Test Console
+  // Interactive Browser Live Wallet Test Console (disabled by default in production; set ENABLE_OMNI_TEST_UI=true to enable)
   router.get('/omni-test', (_req: Request, res: Response) => {
+    if (process.env.ENABLE_OMNI_TEST_UI !== 'true') {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(renderOmniTestHtml());
   });
 
-  // Helper: Fetch latest confirmed Solana Mainnet transaction signature for SOLANA_PAY_TO_ADDRESS
+  // Helper: Fetch latest confirmed Solana Mainnet transaction signature for SOLANA_PAY_TO_ADDRESS (test-UI only)
   router.get('/v1/omni/solana-latest-tx', async (_req: Request, res: Response) => {
+    if (process.env.ENABLE_OMNI_TEST_UI !== 'true') {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
     try {
       const rpcRes = await fetch(SOLANA_RPC_URL, {
         method: 'POST',

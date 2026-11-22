@@ -124,6 +124,17 @@ export class L402Service {
   }
 
   /**
+   * Directly verifies a Lightning payment preimage against a payment hash.
+   * Used by Machine Payments Protocol (MPP) and direct preimage verifications.
+   */
+  async verifyPreimage(
+    paymentHash: string,
+    preimage: string
+  ): Promise<L402VerificationResult> {
+    return this.lightningGateway.verifyPreimage(paymentHash, preimage);
+  }
+
+  /**
    * Generates a random 32-byte secret preimage and its corresponding payment hash.
    */
   static generatePreimagePair(): { preimageHex: string; paymentHashHex: string } {

@@ -5,6 +5,7 @@ import {
   MempoolEntropy,
   BlockHeaderTruth,
   LightningTopologySignal,
+  LightningNetworkStats,
   SmartFeeProjection,
   RbfShieldAssessment,
   NextBlockXray,
@@ -13,6 +14,7 @@ import {
   SmartFeeProjectionSchema,
   RbfShieldAssessmentSchema,
   BlockHeaderTruthSchema,
+  LightningNetworkStatsSchema,
 } from '../../domain/schemas/node-truth.schema.js';
 import {
   CachedBlockTemplate,
@@ -27,6 +29,7 @@ const execAsync = promisify(exec);
 export interface BitcoinRpcConfig {
   tailscaleHost: string;
   containerName: string;
+  lndContainerName?: string;
   cacheTtlMs?: number;
 }
 
@@ -34,6 +37,7 @@ export class BitcoinRpcAdapter implements INodeTruthRepository {
   private mempoolCache: { data: MempoolEntropy; expiresAt: number } | null = null;
   private smartFeeCache: { data: SmartFeeProjection; expiresAt: number } | null = null;
   private blockCache: { data: BlockHeaderTruth; expiresAt: number } | null = null;
+  private lightningStatsCache: { data: LightningNetworkStats; expiresAt: number } | null = null;
   private templateCache: CachedBlockTemplate | null = null;
   private readonly cacheTtlMs: number;
 
@@ -293,16 +297,21 @@ export class BitcoinRpcAdapter implements INodeTruthRepository {
     );
     const parsed = JSON.parse(rawOutput);
 
+    const headerRaw = await this.executeNodeCommand(
+      `bitcoin-cli -conf=/config/bitcoin.conf -datadir=/data getblockheader ${parsed.bestblockhash}`
+    );
+    const header = JSON.parse(headerRaw);
+
     const payload = {
-      height: parsed.blocks,
-      hash: parsed.bestblockhash,
-      previousBlockHash: parsed.bestblockhash,
-      merkleRoot: '0000000000000000000000000000000000000000000000000000000000000000',
-      timestamp: parsed.time,
-      bits: parsed.bits,
-      nonce: 0,
-      difficulty: parsed.difficulty,
-      chain: parsed.chain === 'main' ? 'main' : 'test',
+      height: header.height,
+      hash: header.hash,
+      previousBlockHash: header.previousblockhash ?? header.hash,
+      merkleRoot: header.merkleroot,
+      timestamp: header.time,
+      bits: header.bits,
+      nonce: header.nonce,
+      difficulty: header.difficulty,
+      chain: parsed.chain === 'main' ? 'main' : parsed.chain === 'regtest' ? 'regtest' : 'test',
     };
 
     const validated = BlockHeaderTruthSchema.parse(payload);
@@ -318,5 +327,42 @@ export class BitcoinRpcAdapter implements INodeTruthRepository {
       routingFeeMedianPpm: 250,
       updatedAt: Math.floor(Date.now() / 1000),
     };
+  }
+
+  private async executeLndCommand(cmd: string): Promise<string> {
+    const lndContainer = this.config.lndContainerName || 'sovereign-lnd';
+    const isLocal = this.config.tailscaleHost === '127.0.0.1' || this.config.tailscaleHost === 'localhost';
+    const baseCmd = `docker exec ${lndContainer} lncli --tlscertpath=/var/lib/lnd/data/tls.cert --macaroonpath=/var/lib/lnd/data/data/chain/bitcoin/mainnet/readonly.macaroon ${cmd}`;
+    const fullCommand = isLocal
+      ? baseCmd
+      : `ssh -o ConnectTimeout=5 -o BatchMode=yes root@${this.config.tailscaleHost} "${baseCmd}"`;
+    const { stdout, stderr } = await execAsync(fullCommand, { maxBuffer: 4 * 1024 * 1024 });
+    if (stderr && !stdout) {
+      throw new Error(`LND RPC Error: ${stderr}`);
+    }
+    return stdout.trim();
+  }
+
+  async getLightningNetworkStats(): Promise<LightningNetworkStats> {
+    const now = Date.now();
+    if (this.lightningStatsCache && this.lightningStatsCache.expiresAt > now) {
+      return this.lightningStatsCache.data;
+    }
+
+    const rawOutput = await this.executeLndCommand('getnetworkinfo');
+    const parsed = JSON.parse(rawOutput);
+    const totalCapacity = Number.parseInt(String(parsed.total_network_capacity ?? '0'), 10);
+
+    const validated = LightningNetworkStatsSchema.parse({
+      channel_count: Number(parsed.num_channels ?? 0),
+      node_count: Number(parsed.num_nodes ?? 0),
+      total_capacity_sats: Number.isFinite(totalCapacity) ? totalCapacity : 0,
+      avg_fee_rate_ppm: Number(parsed.avg_fee_rate_ppm ?? 0),
+      med_fee_rate_ppm: Number(parsed.med_fee_rate_ppm ?? 0),
+      updatedAt: Math.floor(now / 1000),
+    });
+
+    this.lightningStatsCache = { data: validated, expiresAt: now + 30_000 };
+    return validated;
   }
 }
