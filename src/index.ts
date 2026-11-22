@@ -9,6 +9,7 @@ import { L402Service } from './application/services/l402.service.js';
 import { Eip7702ShieldService } from './application/services/eip7702-shield.service.js';
 import { EvmSafetyService } from './application/services/evm-safety.service.js';
 import { PreflightGuardService } from './application/services/preflight-guard.service.js';
+import { BtcWatchtowerService } from './application/services/btc-watchtower.service.js';
 import { MarketIntelService } from './application/services/market-intel.service.js';
 import { OracleFeedsService } from './application/services/oracle-feeds.service.js';
 import { createDefaultCrewAiStatusService } from './application/services/crewai-status.service.js';
@@ -16,6 +17,7 @@ import { createNodeTruthRouter } from './interfaces/http/controllers/node-truth.
 import { createOmniRailRouter } from './interfaces/http/controllers/omni-rail.controller.js';
 import { createEvmShieldRouter } from './interfaces/http/controllers/evm-shield.controller.js';
 import { createPreflightGuardRouter } from './interfaces/http/controllers/preflight-guard.controller.js';
+import { createWatchtowerRouter } from './interfaces/http/controllers/watchtower.controller.js';
 import { createMarketIntelRouter } from './interfaces/http/controllers/market-intel.controller.js';
 import { createOracleFeedsRouter } from './interfaces/http/controllers/oracle-feeds.controller.js';
 import { createMcpRouter } from './interfaces/http/controllers/mcp.controller.js';
@@ -76,6 +78,8 @@ async function bootstrap() {
     nodeTruthService,
     oracleFeedsService,
   });
+  const btcWatchtowerService = new BtcWatchtowerService(nodeTruthService);
+  btcWatchtowerService.start();
   const crewAiStatusService = createDefaultCrewAiStatusService(process.env);
   const phoenixdPayer = new PhoenixdPayerAdapter({
     baseUrl: process.env.PHOENIXD_URL || 'http://127.0.0.1:9740',
@@ -87,6 +91,7 @@ async function bootstrap() {
   const omniRouter = createOmniRailRouter(nodeTruthService, l402Service, phoenixdPayer);
   const evmShieldRouter = createEvmShieldRouter(eip7702ShieldService, l402Service);
   const preflightGuardRouter = createPreflightGuardRouter(preflightGuardService, l402Service);
+  const watchtowerRouter = createWatchtowerRouter(btcWatchtowerService, l402Service);
   const marketIntelRouter = createMarketIntelRouter(marketIntelService, l402Service);
   const oracleFeedsRouter = createOracleFeedsRouter(oracleFeedsService, l402Service);
   const mcpRouter = createMcpRouter(
@@ -104,6 +109,7 @@ async function bootstrap() {
   app.use(omniRouter);
   app.use(evmShieldRouter);
   app.use(preflightGuardRouter);
+  app.use(watchtowerRouter);
   app.use(marketIntelRouter);
   app.use(oracleFeedsRouter);
   app.use(mcpRouter);
@@ -132,6 +138,7 @@ async function bootstrap() {
   const shutdown = () => {
     marketIntelService.stop();
     oracleFeedsService.stop();
+    btcWatchtowerService.stop();
     server.close();
   };
   process.once('SIGINT', shutdown);
