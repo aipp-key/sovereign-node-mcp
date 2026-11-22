@@ -5,8 +5,11 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { z } from 'zod';
 import { NodeTruthService } from '../../../application/services/node-truth.service.js';
 import { Eip7702ShieldService } from '../../../application/services/eip7702-shield.service.js';
+import { EvmSafetyService } from '../../../application/services/evm-safety.service.js';
+import { PreflightGuardService } from '../../../application/services/preflight-guard.service.js';
 import { L402Service } from '../../../application/services/l402.service.js';
 import { createL402Middleware } from '../middleware/l402.middleware.js';
+import { registerEvmAndGuardMcpTools } from './mcp-security-tools.helper.js';
 
 const SANDBOX_CALLS_PER_DAY = Number(process.env.MCP_SANDBOX_CALLS_PER_DAY) || 15;
 const SANDBOX_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -29,6 +32,9 @@ const TOOL_PRICING: Record<string, { priceSats: number; priceUsdcAtomic: string;
   check_rbf_fraud_shield: { priceSats: 5, priceUsdcAtomic: '5000', priceUsdDisplay: '$0.005' },
   simulate_raw_transaction: { priceSats: 5, priceUsdcAtomic: '5000', priceUsdDisplay: '$0.005' },
   inspect_eip7702_authorization: { priceSats: 5, priceUsdcAtomic: '5000', priceUsdDisplay: '$0.005' },
+  simulate_evm_tx: { priceSats: 5, priceUsdcAtomic: '5000', priceUsdDisplay: '$0.005' },
+  inspect_evm_address_safety: { priceSats: 4, priceUsdcAtomic: '4000', priceUsdDisplay: '$0.004' },
+  preflight_transaction_guard: { priceSats: 10, priceUsdcAtomic: '10000', priceUsdDisplay: '$0.010' },
 };
 
 function consumeDailySandboxQuota(clientKey: string): { allowed: boolean; remaining: number; resetAt: number } {
@@ -94,7 +100,9 @@ function buildErrorResult(message: string) {
 
 function buildHostedMcpServer(
   nodeTruthService: NodeTruthService,
-  eip7702ShieldService: Eip7702ShieldService
+  eip7702ShieldService: Eip7702ShieldService,
+  evmSafetyService: EvmSafetyService,
+  preflightGuardService: PreflightGuardService
 ): McpServer {
   const server = new McpServer({
     name: 'sovroute-mcp',
@@ -234,14 +242,26 @@ function buildHostedMcpServer(
     }
   );
 
+  registerEvmAndGuardMcpTools(server, evmSafetyService, preflightGuardService);
+
   return server;
 }
 
 export function createMcpRouter(
   nodeTruthService: NodeTruthService,
   eip7702ShieldService: Eip7702ShieldService,
-  l402Service?: L402Service
+  l402Service?: L402Service,
+  evmSafetyService?: EvmSafetyService,
+  preflightGuardService?: PreflightGuardService
 ): Router {
+  const resolvedEvmSafety = evmSafetyService ?? new EvmSafetyService();
+  const resolvedGuard =
+    preflightGuardService ??
+    new PreflightGuardService({
+      evmSafetyService: resolvedEvmSafety,
+      eip7702ShieldService,
+      nodeTruthService,
+    });
   const router = Router();
 
   router.use('/mcp', (req: Request, res: Response, next: NextFunction) => {
@@ -315,7 +335,12 @@ export function createMcpRouter(
       }
     }
 
-    const server = buildHostedMcpServer(nodeTruthService, eip7702ShieldService);
+    const server = buildHostedMcpServer(
+      nodeTruthService,
+      eip7702ShieldService,
+      resolvedEvmSafety,
+      resolvedGuard
+    );
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
 
     res.on('close', () => {

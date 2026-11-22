@@ -7,12 +7,15 @@ import { PhoenixdPayerAdapter } from './infrastructure/lightning/phoenixd-payer.
 import { NodeTruthService } from './application/services/node-truth.service.js';
 import { L402Service } from './application/services/l402.service.js';
 import { Eip7702ShieldService } from './application/services/eip7702-shield.service.js';
+import { EvmSafetyService } from './application/services/evm-safety.service.js';
+import { PreflightGuardService } from './application/services/preflight-guard.service.js';
 import { MarketIntelService } from './application/services/market-intel.service.js';
 import { OracleFeedsService } from './application/services/oracle-feeds.service.js';
 import { createDefaultCrewAiStatusService } from './application/services/crewai-status.service.js';
 import { createNodeTruthRouter } from './interfaces/http/controllers/node-truth.controller.js';
 import { createOmniRailRouter } from './interfaces/http/controllers/omni-rail.controller.js';
 import { createEvmShieldRouter } from './interfaces/http/controllers/evm-shield.controller.js';
+import { createPreflightGuardRouter } from './interfaces/http/controllers/preflight-guard.controller.js';
 import { createMarketIntelRouter } from './interfaces/http/controllers/market-intel.controller.js';
 import { createOracleFeedsRouter } from './interfaces/http/controllers/oracle-feeds.controller.js';
 import { createMcpRouter } from './interfaces/http/controllers/mcp.controller.js';
@@ -62,10 +65,17 @@ async function bootstrap() {
   const nodeTruthService = new NodeTruthService(bitcoinAdapter);
   const l402Service = new L402Service(lightningGateway);
   const eip7702ShieldService = new Eip7702ShieldService();
+  const evmSafetyService = new EvmSafetyService();
   const marketIntelService = new MarketIntelService();
   marketIntelService.start();
   const oracleFeedsService = new OracleFeedsService();
   oracleFeedsService.start();
+  const preflightGuardService = new PreflightGuardService({
+    evmSafetyService,
+    eip7702ShieldService,
+    nodeTruthService,
+    oracleFeedsService,
+  });
   const crewAiStatusService = createDefaultCrewAiStatusService(process.env);
   const phoenixdPayer = new PhoenixdPayerAdapter({
     baseUrl: process.env.PHOENIXD_URL || 'http://127.0.0.1:9740',
@@ -76,9 +86,16 @@ async function bootstrap() {
   const router = createNodeTruthRouter(nodeTruthService, l402Service);
   const omniRouter = createOmniRailRouter(nodeTruthService, l402Service, phoenixdPayer);
   const evmShieldRouter = createEvmShieldRouter(eip7702ShieldService, l402Service);
+  const preflightGuardRouter = createPreflightGuardRouter(preflightGuardService, l402Service);
   const marketIntelRouter = createMarketIntelRouter(marketIntelService, l402Service);
   const oracleFeedsRouter = createOracleFeedsRouter(oracleFeedsService, l402Service);
-  const mcpRouter = createMcpRouter(nodeTruthService, eip7702ShieldService, l402Service);
+  const mcpRouter = createMcpRouter(
+    nodeTruthService,
+    eip7702ShieldService,
+    l402Service,
+    evmSafetyService,
+    preflightGuardService
+  );
   const crewAiStatusRouter = createCrewAiStatusRouter(crewAiStatusService);
   const internalCoreRouter = createInternalCoreRouter(nodeTruthService, {
     coreBridgeKey: process.env.CORE_BRIDGE_KEY,
@@ -86,6 +103,7 @@ async function bootstrap() {
   app.use(router);
   app.use(omniRouter);
   app.use(evmShieldRouter);
+  app.use(preflightGuardRouter);
   app.use(marketIntelRouter);
   app.use(oracleFeedsRouter);
   app.use(mcpRouter);
