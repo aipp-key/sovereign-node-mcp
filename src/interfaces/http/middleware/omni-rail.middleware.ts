@@ -660,6 +660,8 @@ export function createOmniRailMiddleware(
           network: 'lightning:mainnet',
           asset: 'BTC-SATS',
           amount: String(challenge.priceSats),
+          payTo: BASE_PAY_TO_ADDRESS,
+          maxTimeoutSeconds: 300,
           invoice: challenge.invoice,
           macaroon: challenge.macaroon,
           paymentHash: challenge.paymentHash,
@@ -679,7 +681,9 @@ export function createOmniRailMiddleware(
         {
           rail: 3,
           scheme: 'solana-x402',
-          network: 'solana:mainnet',
+          network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+          asset: SOLANA_USDC_MINT,
+          amount: options.priceUsdcAtomic,
           payTo: SOLANA_PAY_TO_ADDRESS,
           acceptedAssets: [
             { symbol: 'USDC', mint: SOLANA_USDC_MINT, amountAtomic: options.priceUsdcAtomic },
@@ -690,6 +694,9 @@ export function createOmniRailMiddleware(
         {
           rail: 4,
           scheme: 'evm-multi-x402',
+          network: 'eip155:42161',
+          asset: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+          amount: options.priceUsdcAtomic,
           networks: Object.keys(SUPPORTED_EVM_CHAINS),
           payTo: BASE_PAY_TO_ADDRESS,
           acceptedAssets: [
@@ -700,13 +707,53 @@ export function createOmniRailMiddleware(
         },
       ];
 
+      const omniBazaarSchema = {
+        type: 'object',
+        properties: {
+          input: {
+            type: 'object',
+            properties: {
+              queryParams: { type: 'object', properties: {} },
+              body: { type: 'object', properties: { invoice: { type: 'string' } } },
+            },
+          },
+          output: {
+            type: 'object',
+            properties: {
+              example: { type: 'object', properties: { status: { type: 'string' } } },
+              body: { type: 'object', properties: { status: { type: 'string' } } },
+            },
+          },
+        },
+      };
+
+      const omniResource = {
+        url: fullResourceUrl,
+        description: options.description,
+        mimeType: 'application/json',
+        serviceName: 'Sovereign Node Engine — Quad-Rail Gateway',
+      };
+
+      const omniHeaderPayload = {
+        x402Version: 2,
+        price: options.priceUsdDisplay,
+        resource: omniResource,
+        extensions: {
+          bazaar: {
+            info: { input: { type: 'http', method: req.method } },
+            schema: omniBazaarSchema,
+          },
+        },
+        accepts,
+      };
+
       res.setHeader(
         'WWW-Authenticate',
         `L402 macaroon="${challenge.macaroon}", invoice="${challenge.invoice}"`
       );
       res.setHeader(
         'Payment-Required',
-        Buffer.from(JSON.stringify({ x402Version: 2, price: options.priceUsdDisplay, accepts })).toString('base64')
+        Buffer.from(JSON.stringify(omniHeaderPayload)).toString('base64')
       );
       res.setHeader('X-Payment-Requirements', 'L402-Lightning, x402-Base, x402-Solana, x402-MultiEVM');
 
@@ -716,11 +763,8 @@ export function createOmniRailMiddleware(
         x402Version: 2,
         price: options.priceUsdDisplay,
         priceSats: challenge.priceSats,
-        resource: {
-          url: fullResourceUrl,
-          description: options.description,
-          serviceName: 'Sovereign Node Engine — Quad-Rail Gateway',
-        },
+        resource: omniResource,
+        extensions: omniHeaderPayload.extensions,
         accepts,
         challenge: {
           macaroon: challenge.macaroon,

@@ -66,8 +66,20 @@ export function createPreflightGuardRouter(
   });
 
   // Unified Pre-Flight Decision Guardrail: 10 sats / $0.010 USDC (L402 + x402 + MPP)
+  const preflightGuardMiddleware = createL402Middleware(l402Service, {
+    priceSats: 10,
+    priceUsdcAtomic: '10000',
+    priceUsdDisplay: '$0.010',
+    resourceName: 'unified-preflight-guard',
+    description:
+      'Unified Pre-Flight Transaction Guardrail: combines EVM simulation + address/token safety + optional EIP-7702 or BTC consensus + RBF shield + stablecoin peg context into a single ALLOW/WARN/BLOCK verdict.',
+  });
+
+  router.get('/v1/guard/preflight', preflightGuardMiddleware);
+
   router.post(
     '/v1/guard/preflight',
+    preflightGuardMiddleware,
     (req: Request, res: Response, next: NextFunction) => {
       const parsed = PreflightGuardRequestSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -80,14 +92,6 @@ export function createPreflightGuardRouter(
       (req as any).validatedPreflight = parsed.data;
       next();
     },
-    createL402Middleware(l402Service, {
-      priceSats: 10,
-      priceUsdcAtomic: '10000',
-      priceUsdDisplay: '$0.010',
-      resourceName: 'unified-preflight-guard',
-      description:
-        'Unified Pre-Flight Transaction Guardrail: combines EVM simulation + address/token safety + optional EIP-7702 or BTC consensus + RBF shield + stablecoin peg context into a single ALLOW/WARN/BLOCK verdict.',
-    }),
     async (req: Request, res: Response) => {
       try {
         const report = await preflightGuardService.evaluate((req as any).validatedPreflight);

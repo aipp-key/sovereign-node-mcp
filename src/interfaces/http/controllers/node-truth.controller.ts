@@ -279,7 +279,6 @@ export function createNodeTruthRouter(
       '/v1/truth/rbf-shield',
       '/v1/truth/rbf-shield/:txid',
     ],
-    validateTxidParam,
     createL402Middleware(l402Service, {
       priceSats: 5,
       priceUsdcAtomic: '5000',
@@ -306,6 +305,7 @@ export function createNodeTruthRouter(
         },
       },
     }),
+    validateTxidParam,
     async (req: Request, res: Response) => {
       const rawTxid = req.params.txid;
       const txid = Array.isArray(rawTxid) ? rawTxid[0] : rawTxid;
@@ -383,7 +383,6 @@ export function createNodeTruthRouter(
       '/v1/truth/next-block-xray',
       '/v1/truth/next-block-xray/:txid',
     ],
-    validateOptionalTxid,
     createL402Middleware(l402Service, {
       priceSats: 5,
       priceUsdcAtomic: '5000',
@@ -410,6 +409,7 @@ export function createNodeTruthRouter(
         },
       },
     }),
+    validateOptionalTxid,
     async (req: Request, res: Response) => {
       const rawParam = req.params.txid || (req.query.txid as string | undefined);
       const txid = Array.isArray(rawParam) ? rawParam[0] : rawParam;
@@ -428,34 +428,41 @@ export function createNodeTruthRouter(
   );
 
   // Protected: Zero-Broadcast Consensus & Script Dry-Run Simulator (5 sats / $0.005 USDC)
-  router.post(
-    ['/v1/chain/btc/simulate-tx', '/v1/truth/simulate-tx'],
-    validateRawTxHexBody,
-    createL402Middleware(l402Service, {
-      priceSats: 5,
-      priceUsdcAtomic: '5000',
-      priceUsdDisplay: '$0.005',
-      resourceName: 'simulate-tx-consensus',
-      description:
-        'Zero-Broadcast Bitcoin Core v31.1 testmempoolaccept consensus & script dry-run simulator. Never broadcasts to P2P network.',
-      schema: {
-        input: {
-          body: { rawTxHex: 'Even-length hexadecimal signed raw Bitcoin transaction (100-200000 chars)' },
-        },
-        output: {
-          source: 'string',
-          paymentRail: 'string',
-          data: {
-            txid: 'string',
-            consensusAllowed: 'boolean',
-            rejectReason: 'string | null',
-            vsize: 'number',
-            feeRateSatPerVb: 'number | null',
-            broadcastedToNetwork: false,
-          },
+  const btcSimulateTxMiddleware = createL402Middleware(l402Service, {
+    priceSats: 5,
+    priceUsdcAtomic: '5000',
+    priceUsdDisplay: '$0.005',
+    resourceName: 'simulate-tx-consensus',
+    description:
+      'Zero-Broadcast Bitcoin Core v31.1 testmempoolaccept consensus & script dry-run simulator. Never broadcasts to P2P network.',
+    schema: {
+      input: {
+        body: { rawTxHex: 'Even-length hexadecimal signed raw Bitcoin transaction (100-200000 chars)' },
+      },
+      output: {
+        source: 'string',
+        paymentRail: 'string',
+        data: {
+          txid: 'string',
+          consensusAllowed: 'boolean',
+          rejectReason: 'string | null',
+          vsize: 'number',
+          feeRateSatPerVb: 'number | null',
+          broadcastedToNetwork: false,
         },
       },
-    }),
+    },
+  });
+
+  router.get(
+    ['/v1/chain/btc/simulate-tx', '/v1/truth/simulate-tx'],
+    btcSimulateTxMiddleware
+  );
+
+  router.post(
+    ['/v1/chain/btc/simulate-tx', '/v1/truth/simulate-tx'],
+    btcSimulateTxMiddleware,
+    validateRawTxHexBody,
     async (req: Request, res: Response) => {
       try {
         const simData = await nodeTruthService.simulateTxConsensus(req.body.rawTxHex);

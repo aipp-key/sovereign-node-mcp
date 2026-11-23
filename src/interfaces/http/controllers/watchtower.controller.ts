@@ -23,8 +23,20 @@ export function createWatchtowerRouter(
   });
 
   // Prepaid BTC TX & RBF Watchtower subscription: 10 sats / $0.010 USDC (up to 72h TTL)
+  const watchtowerMiddleware = createL402Middleware(l402Service, {
+    priceSats: 10,
+    priceUsdcAtomic: '10000',
+    priceUsdDisplay: '$0.010',
+    resourceName: 'btc-tx-watchtower',
+    description:
+      'Prepaid Bitcoin TX & RBF Watchtower: monitors an unconfirmed txid against bare-metal Bitcoin Core v31.1 for confirmations, RBF replacements, or double-spend conflicts with HMAC-signed webhooks.',
+  });
+
+  router.get('/v1/watchtower/btc/watch', watchtowerMiddleware);
+
   router.post(
     '/v1/watchtower/btc/watch',
+    watchtowerMiddleware,
     (req: Request, res: Response, next: NextFunction) => {
       const parsed = CreateBtcWatchRequestSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -44,14 +56,6 @@ export function createWatchtowerRouter(
       (req as any).validatedBtcWatch = parsed.data;
       next();
     },
-    createL402Middleware(l402Service, {
-      priceSats: 10,
-      priceUsdcAtomic: '10000',
-      priceUsdDisplay: '$0.010',
-      resourceName: 'btc-tx-watchtower',
-      description:
-        'Prepaid Bitcoin TX & RBF Watchtower: monitors an unconfirmed txid against bare-metal Bitcoin Core v31.1 for confirmations, RBF replacements, or double-spend conflicts with HMAC-signed webhooks.',
-    }),
     async (req: Request, res: Response) => {
       try {
         const created = await watchtowerService.createWatch((req as any).validatedBtcWatch);

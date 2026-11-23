@@ -115,8 +115,6 @@ export function createOracleFeedsRouter(
   // Zero-wait RAM Stablecoin Peg & Depeg Risk Oracle (1 sat / $0.001 USDC)
   router.get(
     '/v1/intel/stablecoin-peg',
-    validateStablecoinQuery,
-    requireFreshStablecoins(oracleFeedsService),
     createL402Middleware(l402Service, {
       priceSats: 1,
       priceUsdcAtomic: '1000',
@@ -129,6 +127,8 @@ export function createOracleFeedsRouter(
         output: { description: 'In-memory USD peg deviation and depeg risk snapshot' },
       },
     }),
+    validateStablecoinQuery,
+    requireFreshStablecoins(oracleFeedsService),
     (req: Request, res: Response) => {
       const symbol = res.locals.validatedStablecoin as StablecoinSymbol | undefined;
       res.json({
@@ -143,8 +143,6 @@ export function createOracleFeedsRouter(
   // Zero-wait EVM Multi-Chain Gas & Blob Base Fee Pulse (1 sat / $0.001 USDC)
   router.get(
     '/v1/chain/evm/gas-pulse',
-    validateGasPulseQuery,
-    requireFreshGasPulse(oracleFeedsService),
     createL402Middleware(l402Service, {
       priceSats: 1,
       priceUsdcAtomic: '1000',
@@ -157,6 +155,8 @@ export function createOracleFeedsRouter(
         output: { description: 'Zero-wait multi-chain EVM baseFee & blobBaseFee pulse' },
       },
     }),
+    validateGasPulseQuery,
+    requireFreshGasPulse(oracleFeedsService),
     (req: Request, res: Response) => {
       const chain = res.locals.validatedGasChain as EvmGasChain | undefined;
       res.json({
@@ -171,8 +171,6 @@ export function createOracleFeedsRouter(
   // Zero-wait Bare-Metal Bitcoin Core ZMQ rawtx Whale Tape (5 sats / $0.005 USDC)
   router.get(
     '/v1/chain/btc/whale-tape',
-    validateWhaleTapeQuery,
-    requireFreshWhaleTape(oracleFeedsService),
     createL402Middleware(l402Service, {
       priceSats: 5,
       priceUsdcAtomic: '5000',
@@ -190,6 +188,8 @@ export function createOracleFeedsRouter(
         output: { description: 'Live ZMQ rawtx whale transaction tape' },
       },
     }),
+    validateWhaleTapeQuery,
+    requireFreshWhaleTape(oracleFeedsService),
     (req: Request, res: Response) => {
       const minBtc = res.locals.validatedMinBtc as number;
       const limit = res.locals.validatedLimit as number;

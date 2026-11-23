@@ -223,7 +223,6 @@ export function createOmniRailRouter(
   // 4-Rail Protected: 0-Conf RBF Shield
   router.get(
     '/v1/omni/btc/rbf-shield/:txid',
-    validateTxidParam,
     createOmniRailMiddleware(l402Service, {
       priceSats: 5,
       priceUsdcAtomic: '5000',
@@ -233,6 +232,7 @@ export function createOmniRailRouter(
       resourceName: 'omni-rbf-shield',
       description: 'Quad-Rail (L402 + Base + Solana + Multi-EVM) 0-Conf RBF Fraud Shield',
     }),
+    validateTxidParam,
     async (req: Request, res: Response) => {
       const rawTxid = req.params.txid;
       const txid = Array.isArray(rawTxid) ? rawTxid[0] : rawTxid;
@@ -280,7 +280,6 @@ export function createOmniRailRouter(
   // 4-Rail Protected: Next Block X-Ray (getblocktemplate Oracle)
   router.get(
     ['/v1/omni/btc/next-block-xray', '/v1/omni/btc/next-block-xray/:txid'],
-    validateOptionalTxid,
     createOmniRailMiddleware(l402Service, {
       priceSats: 5,
       priceUsdcAtomic: '5000',
@@ -290,6 +289,7 @@ export function createOmniRailRouter(
       resourceName: 'omni-next-block-xray',
       description: 'Quad-Rail Live Bitcoin Core v31.1 Candidate Block Template X-Ray & Queue Rank Oracle',
     }),
+    validateOptionalTxid,
     async (req: Request, res: Response) => {
       const rawParam = req.params.txid || (req.query.txid as string | undefined);
       const txid = Array.isArray(rawParam) ? rawParam[0] : rawParam;
@@ -309,18 +309,22 @@ export function createOmniRailRouter(
   );
 
   // 4-Rail Protected: Zero-Broadcast Consensus & Script Dry-Run Simulator (testmempoolaccept)
+  const omniSimulateMiddleware = createOmniRailMiddleware(l402Service, {
+    priceSats: 5,
+    priceUsdcAtomic: '5000',
+    priceSolLamports: '25000',
+    priceEthWei: '400000000000',
+    priceUsdDisplay: '$0.005',
+    resourceName: 'omni-simulate-tx',
+    description: 'Quad-Rail Zero-Broadcast Bitcoin Core v31.1 Consensus & Script Simulator',
+  });
+
+  router.get('/v1/omni/btc/simulate-tx', omniSimulateMiddleware);
+
   router.post(
     '/v1/omni/btc/simulate-tx',
+    omniSimulateMiddleware,
     validateRawTxHexBody,
-    createOmniRailMiddleware(l402Service, {
-      priceSats: 5,
-      priceUsdcAtomic: '5000',
-      priceSolLamports: '25000',
-      priceEthWei: '400000000000',
-      priceUsdDisplay: '$0.005',
-      resourceName: 'omni-simulate-tx',
-      description: 'Quad-Rail Zero-Broadcast Bitcoin Core v31.1 Consensus & Script Simulator',
-    }),
     async (req: Request, res: Response) => {
       try {
         const simData = await nodeTruthService.simulateTxConsensus(req.body.rawTxHex);
@@ -338,19 +342,23 @@ export function createOmniRailRouter(
   );
 
   // 4-Rail Protected: Walletless Lightning Bridge (Pay any <=25 sat BOLT-11 invoice using Solana/Base/Arbitrum)
+  const omniPayLightningMiddleware = createOmniRailMiddleware(l402Service, {
+    priceSats: 25,
+    priceUsdcAtomic: '25000',
+    priceSolLamports: '100000',
+    priceEthWei: '400000000000',
+    priceUsdDisplay: '$0.025',
+    resourceName: 'omni-pay-lightning-bridge',
+    description:
+      'SUB-LIG Universal Bridge: Settle a BOLT-11 Lightning invoice (up to 25 sats) using Solana, Base, or Arbitrum and receive cryptographic preimage.',
+  });
+
+  router.get('/v1/omni/pay-lightning', omniPayLightningMiddleware);
+
   router.post(
     '/v1/omni/pay-lightning',
+    omniPayLightningMiddleware,
     validateBridgeInvoiceBody,
-    createOmniRailMiddleware(l402Service, {
-      priceSats: 25,
-      priceUsdcAtomic: '25000',
-      priceSolLamports: '100000',
-      priceEthWei: '400000000000',
-      priceUsdDisplay: '$0.025',
-      resourceName: 'omni-pay-lightning-bridge',
-      description:
-        'SUB-LIG Universal Bridge: Settle a BOLT-11 Lightning invoice (up to 25 sats) using Solana, Base, or Arbitrum and receive cryptographic preimage.',
-    }),
     async (req: Request, res: Response) => {
       if (!lightningPayer) {
         res.status(503).json({ error: 'Lightning Payer backend is not configured on this node' });

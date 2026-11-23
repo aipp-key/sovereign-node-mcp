@@ -162,8 +162,18 @@ export function createEvmShieldRouter(
 
   // Pre-Flight EVM Transaction Simulator: 5 sats / $0.005 USDC
   const evmSafety = new EvmSafetyService();
+  const simulateTxMiddleware = createL402Middleware(l402Service, {
+    priceSats: 5,
+    priceUsdcAtomic: '5000',
+    priceUsdDisplay: '$0.005',
+    resourceName: 'evm-simulate-tx',
+    description:
+      'EVM Pre-Flight Transaction Simulator: dry-runs eth_call + gas estimation, decodes revert reasons, detects unlimited approvals, EIP-7702 target delegations, and ONNX drainer risk.',
+  });
+  router.get('/v1/chain/evm/simulate-tx', simulateTxMiddleware);
   router.post(
     '/v1/chain/evm/simulate-tx',
+    simulateTxMiddleware,
     (req: Request, res: Response, next: NextFunction) => {
       const parsed = EvmSimulateTxRequestSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -176,14 +186,6 @@ export function createEvmShieldRouter(
       (req as any).validatedSimulateTx = parsed.data;
       next();
     },
-    createL402Middleware(l402Service, {
-      priceSats: 5,
-      priceUsdcAtomic: '5000',
-      priceUsdDisplay: '$0.005',
-      resourceName: 'evm-simulate-tx',
-      description:
-        'EVM Pre-Flight Transaction Simulator: dry-runs eth_call + gas estimation, decodes revert reasons, detects unlimited approvals, EIP-7702 target delegations, and ONNX drainer risk.',
-    }),
     async (req: Request, res: Response) => {
       try {
         const report = await evmSafety.simulateTransaction((req as any).validatedSimulateTx);
@@ -199,8 +201,18 @@ export function createEvmShieldRouter(
   );
 
   // EVM Address, Contract & Token Safety Scanner: 4 sats / $0.004 USDC
+  const addressSafetyMiddleware = createL402Middleware(l402Service, {
+    priceSats: 5,
+    priceUsdcAtomic: '5000',
+    priceUsdDisplay: '$0.005',
+    resourceName: 'evm-address-safety',
+    description:
+      'EVM Address, Contract & Token Safety Scanner: classifies EOA/EIP-7702/Proxy/ERC-20, checks privileged mint/pause/blacklist controls, dangerous opcodes, and ONNX drainer score.',
+  });
+  router.get('/v1/chain/evm/address-safety', addressSafetyMiddleware);
   router.post(
     '/v1/chain/evm/address-safety',
+    addressSafetyMiddleware,
     (req: Request, res: Response, next: NextFunction) => {
       const parsed = EvmAddressSafetyRequestSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -213,14 +225,6 @@ export function createEvmShieldRouter(
       (req as any).validatedAddressSafety = parsed.data;
       next();
     },
-    createL402Middleware(l402Service, {
-      priceSats: 5,
-      priceUsdcAtomic: '5000',
-      priceUsdDisplay: '$0.005',
-      resourceName: 'evm-address-safety',
-      description:
-        'EVM Address, Contract & Token Safety Scanner: classifies EOA/EIP-7702/Proxy/ERC-20, checks privileged mint/pause/blacklist controls, dangerous opcodes, and ONNX drainer score.',
-    }),
     async (req: Request, res: Response) => {
       try {
         const report = await evmSafety.inspectAddressSafety((req as any).validatedAddressSafety);
@@ -236,8 +240,18 @@ export function createEvmShieldRouter(
   );
 
   // Batch EVM Address, Contract & Token Safety Scanner (up to 10 addresses): 10 sats / $0.010 USDC
+  const addressBatchMiddleware = createL402Middleware(l402Service, {
+    priceSats: 10,
+    priceUsdcAtomic: '10000',
+    priceUsdDisplay: '$0.010',
+    resourceName: 'evm-address-safety-batch',
+    description:
+      'Batch EVM Address, Contract & Token Safety Scanner: inspects up to 10 addresses in parallel with aggregate verdict and per-address risk breakdown.',
+  });
+  router.get('/v1/chain/evm/address-safety/batch', addressBatchMiddleware);
   router.post(
     '/v1/chain/evm/address-safety/batch',
+    addressBatchMiddleware,
     (req: Request, res: Response, next: NextFunction) => {
       const parsed = EvmAddressSafetyBatchRequestSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -250,14 +264,6 @@ export function createEvmShieldRouter(
       (req as any).validatedAddressBatch = parsed.data;
       next();
     },
-    createL402Middleware(l402Service, {
-      priceSats: 10,
-      priceUsdcAtomic: '10000',
-      priceUsdDisplay: '$0.010',
-      resourceName: 'evm-address-safety-batch',
-      description:
-        'Batch EVM Address, Contract & Token Safety Scanner: inspects up to 10 addresses in parallel with aggregate verdict and per-address risk breakdown.',
-    }),
     async (req: Request, res: Response) => {
       try {
         const { chainId, addresses } = (req as any).validatedAddressBatch as {

@@ -137,8 +137,6 @@ export function createMarketIntelRouter(
   // Zero-wait RAM snapshot across Binance, Bybit, OKX, Hyperliquid (5 sats / $0.005 USDC)
   router.get(
     '/v1/intel/microstructure',
-    validateMicrostructureQuery,
-    requireFreshMicrostructure(marketIntelService),
     createL402Middleware(l402Service, {
       priceSats: 5,
       priceUsdcAtomic: '5000',
@@ -157,6 +155,8 @@ export function createMarketIntelRouter(
         },
       },
     }),
+    validateMicrostructureQuery,
+    requireFreshMicrostructure(marketIntelService),
     (req: Request, res: Response) => {
       const symbol = res.locals.validatedSymbol as SupportedSymbol;
       const data = marketIntelService.getMicrostructure(symbol);
@@ -172,8 +172,6 @@ export function createMarketIntelRouter(
   // Zero-wait RAM Polymarket CLOB + Gamma paired with live exchange spot price (5 sats / $0.005 USDC)
   router.get(
     '/v1/intel/polymarket-edge',
-    validatePolymarketQuery,
-    requireFreshPolymarket(marketIntelService),
     createL402Middleware(l402Service, {
       priceSats: 5,
       priceUsdcAtomic: '5000',
@@ -192,6 +190,8 @@ export function createMarketIntelRouter(
         },
       },
     }),
+    validatePolymarketQuery,
+    requireFreshPolymarket(marketIntelService),
     (req: Request, res: Response) => {
       const asset = res.locals.validatedAsset as SupportedSymbol | undefined;
       const data = marketIntelService.getPolymarketEdge(asset);
@@ -207,8 +207,6 @@ export function createMarketIntelRouter(
   // Zero-wait RAM Cross-Exchange Funding & Spot-Perp Basis Arbitrage (5 sats / $0.005 USDC)
   router.get(
     '/v1/intel/funding-arb',
-    validateMicrostructureQuery,
-    requireFreshFundingArb(marketIntelService),
     createL402Middleware(l402Service, {
       priceSats: 5,
       priceUsdcAtomic: '5000',
@@ -221,6 +219,8 @@ export function createMarketIntelRouter(
         output: { description: 'In-memory carry and spot-perp basis snapshot' },
       },
     }),
+    validateMicrostructureQuery,
+    requireFreshFundingArb(marketIntelService),
     (req: Request, res: Response) => {
       const symbol = res.locals.validatedSymbol as SupportedSymbol;
       const data = marketIntelService.getFundingArb(symbol);
@@ -236,8 +236,6 @@ export function createMarketIntelRouter(
   // Zero-wait RAM Deribit DVOL + 25-Delta Options Skew Oracle (5 sats / $0.005 USDC)
   router.get(
     '/v1/intel/options-skew',
-    validateOptionsQuery,
-    requireFreshOptions(marketIntelService),
     createL402Middleware(l402Service, {
       priceSats: 5,
       priceUsdcAtomic: '5000',
@@ -250,6 +248,8 @@ export function createMarketIntelRouter(
         output: { description: 'In-memory Deribit DVOL and options skew snapshot' },
       },
     }),
+    validateOptionsQuery,
+    requireFreshOptions(marketIntelService),
     (req: Request, res: Response) => {
       const asset = res.locals.validatedOptionsAsset as OptionsAsset;
       const data = marketIntelService.getOptionsSkew(asset);

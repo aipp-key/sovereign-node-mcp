@@ -729,6 +729,8 @@ export function createL402Middleware(
         network: 'lightning:mainnet',
         amount: String(challenge.priceSats),
         asset: 'BTC-SATS',
+        payTo: BASE_PAY_TO_ADDRESS,
+        maxTimeoutSeconds: 300,
         invoice: challenge.invoice,
         macaroon: challenge.macaroon,
         paymentHash: challenge.paymentHash,
@@ -744,6 +746,9 @@ export function createL402Middleware(
         l402Requirement,
       ];
 
+      const bazaarInputSchema = options.schema?.input || { type: 'object', properties: {} };
+      const bazaarOutputSchema = options.schema?.output || { type: 'object', properties: {} };
+
       const x402HeaderPayload = {
         x402Version: 2,
         error: 'Payment required',
@@ -753,8 +758,34 @@ export function createL402Middleware(
           mimeType: 'application/json',
           serviceName: 'Sovereign Node Engine',
           schema: options.schema,
-          inputSchema: options.schema?.input,
-          outputSchema: options.schema?.output,
+          inputSchema: bazaarInputSchema,
+          outputSchema: bazaarOutputSchema,
+        },
+        extensions: {
+          bazaar: {
+            info: { input: { type: 'http', method: req.method } },
+            schema: {
+              type: 'object',
+              properties: {
+                input: {
+                  type: 'object',
+                  properties: {
+                    queryParams: bazaarInputSchema,
+                    body: bazaarInputSchema,
+                  },
+                },
+                output: {
+                  type: 'object',
+                  properties: {
+                    example: bazaarOutputSchema,
+                    body: bazaarOutputSchema,
+                  },
+                },
+              },
+              inputSchema: bazaarInputSchema,
+              outputSchema: bazaarOutputSchema,
+            },
+          },
         },
         price: usdDisplay,
         protocols: ['x402', 'mpp', 'l402'],
@@ -821,8 +852,9 @@ export function createL402Middleware(
           input: { description: 'Request payload or parameters' },
           output: { description: 'Cryptographic node response' },
         },
-        inputSchema: options.schema?.input,
-        outputSchema: options.schema?.output,
+        inputSchema: bazaarInputSchema,
+        outputSchema: bazaarOutputSchema,
+        extensions: x402HeaderPayload.extensions,
         accepts: acceptsList,
         challenge: {
           macaroon: challenge.macaroon,
