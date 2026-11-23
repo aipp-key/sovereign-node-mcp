@@ -5,6 +5,7 @@ import { AutonomousL402Agent } from '../../application/services/autonomous-agent
 import { ILightningPayer } from '../../application/interfaces/lightning-payer.interface.js';
 import { PhoenixdPayerAdapter } from '../../infrastructure/lightning/phoenixd-payer.adapter.js';
 import { NwcPayerAdapter } from '../../infrastructure/alby/nwc-payer.adapter.js';
+import { registerStdioSecurityMcpTools } from './stdio-security-tools.helper.js';
 
 export interface SovereignMcpConfig {
   sovereignNodeUrl?: string;
@@ -55,7 +56,7 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
 
   const server = new McpServer({
     name: 'sovereign-node-mcp',
-    version: '1.0.0',
+    version: '1.1.0',
   });
 
   // Tool 1: get_bitcoin_smart_fees
@@ -383,6 +384,9 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
       }
     }
   );
+
+  // Tools 9-11: EVM Pre-Sign Simulation, Address Safety & Cryptographically Signed Preflight Guard
+  registerStdioSecurityMcpTools(server, sovereignNodeUrl, agent, maxPriceSats);
 
   const start = async () => {
     const transport = new StdioServerTransport();

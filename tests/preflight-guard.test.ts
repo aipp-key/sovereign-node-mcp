@@ -52,6 +52,35 @@ test('PreflightGuardService returns ALLOW on clean EVM tx and BLOCK on severe st
   });
   assert.equal(clean.verdict, 'ALLOW');
   assert.deepEqual(clean.checksExecuted, ['evm_simulate_tx', 'evm_address_safety', 'stablecoin_peg']);
+  assert.ok(clean.attestation, 'Attestation must be attached');
+  assert.equal(clean.attestation.verdict, 'ALLOW');
+  assert.ok(clean.attestation.signature.length > 32);
+  assert.equal(clean.sla?.tier, 'SERVICE_CREDIT_10X');
+
+  const verified = guard.verifyAttestation({
+    inspectedAt: clean.inspectedAt,
+    attestation: clean.attestation,
+  });
+  assert.equal(verified.valid, true);
+  assert.equal(verified.signatureValid, true);
+  assert.equal(verified.reportHashMatches, true);
+
+  const tampered = guard.verifyAttestation({
+    inspectedAt: clean.inspectedAt,
+    attestation: { ...clean.attestation, riskScore: 99 },
+  });
+  assert.equal(tampered.valid, false);
+
+  const sandboxDrainer = guard.evaluateSandbox('eip7702-drainer');
+  assert.equal(sandboxDrainer.verdict, 'BLOCK');
+  assert.ok(sandboxDrainer.attestation);
+  assert.equal(
+    guard.verifyAttestation({
+      inspectedAt: sandboxDrainer.inspectedAt,
+      attestation: sandboxDrainer.attestation!,
+    }).valid,
+    true
+  );
 
   const depeg = await guard.evaluate({
     protocol: 'evm',

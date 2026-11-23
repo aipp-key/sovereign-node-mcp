@@ -2,14 +2,22 @@ import {
   BtcPreflightRequest,
   EvmPreflightRequest,
   GuardFinding,
+  PreflightAttestationVerifyRequest,
   PreflightGuardReport,
   PreflightGuardRequest,
   PreflightGuardVerdict,
+  PreflightSandboxScenario,
 } from '../../domain/schemas/preflight-guard.schema.js';
 import { Eip7702ShieldService } from './eip7702-shield.service.js';
 import { EvmSafetyService } from './evm-safety.service.js';
 import { NodeTruthService } from './node-truth.service.js';
 import { OracleFeedsService } from './oracle-feeds.service.js';
+import {
+  attachPreflightAttestationAndSla,
+  AttestationVerificationResult,
+  buildPreflightSandboxReport,
+  verifyPreflightAttestation,
+} from './preflight-attestation.helper.js';
 
 export interface PreflightGuardDeps {
   evmSafetyService: EvmSafetyService;
@@ -32,10 +40,18 @@ export class PreflightGuardService {
   }
 
   async evaluate(request: PreflightGuardRequest): Promise<PreflightGuardReport> {
-    if (request.protocol === 'evm') {
-      return this.evaluateEvm(request);
-    }
-    return this.evaluateBtc(request);
+    const rawReport = request.protocol === 'evm'
+      ? await this.evaluateEvm(request)
+      : await this.evaluateBtc(request);
+    return attachPreflightAttestationAndSla(rawReport);
+  }
+
+  verifyAttestation(input: PreflightAttestationVerifyRequest): AttestationVerificationResult {
+    return verifyPreflightAttestation(input);
+  }
+
+  evaluateSandbox(scenario: PreflightSandboxScenario): PreflightGuardReport {
+    return buildPreflightSandboxReport(scenario);
   }
 
   private checkStablecoinContext(

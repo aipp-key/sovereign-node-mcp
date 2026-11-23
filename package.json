@@ -1,7 +1,7 @@
 {
   "name": "@aipp/sovereign-node-mcp",
-  "version": "1.0.4",
-  "description": "Zero-trust Bitcoin Core v31.1 Intelligence & Forensics MCP Server for AI Agents",
+  "version": "1.1.0",
+  "description": "Zero-trust Bitcoin Core v31.1 & EVM Pre-Sign Security MCP Server with Signed Attestations for AI Agents",
   "main": "dist/index.js",
   "publishConfig": {
     "access": "public"
@@ -32,6 +32,11 @@
     "mempool",
     "ai-agents",
     "forensics",
+    "x402",
+    "mpp",
+    "eip-7702",
+    "evm-security",
+    "preflight-guard",
     "claude",
     "cursor"
   ],

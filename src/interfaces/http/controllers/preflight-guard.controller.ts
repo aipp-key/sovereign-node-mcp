@@ -1,7 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { L402Service } from '../../../application/services/l402.service.js';
 import { PreflightGuardService } from '../../../application/services/preflight-guard.service.js';
-import { PreflightGuardRequestSchema } from '../../../domain/schemas/preflight-guard.schema.js';
+import {
+  PreflightAttestationVerifyRequestSchema,
+  PreflightGuardRequestSchema,
+  PreflightSandboxRequestSchema,
+} from '../../../domain/schemas/preflight-guard.schema.js';
 import { createL402Middleware, DUAL_RAIL_CORS_HEADERS } from '../middleware/l402.middleware.js';
 
 export function createPreflightGuardRouter(
@@ -19,6 +23,46 @@ export function createPreflightGuardRouter(
       return;
     }
     next();
+  });
+
+  // Free Cryptographic Attestation Verification Endpoint (200 OK)
+  router.post('/v1/guard/verify-attestation', (req: Request, res: Response) => {
+    const parsed = PreflightAttestationVerifyRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        error: 'Invalid attestation verification payload',
+        details: parsed.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+      });
+      return;
+    }
+    try {
+      const verification = preflightGuardService.verifyAttestation(parsed.data);
+      res.json({
+        source: 'sovereign-guard:attestation-verifier',
+        data: verification,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Attestation verification failed', details: err.message });
+    }
+  });
+
+  // Free Deterministic Sandbox Simulator for Interactive Web Showcase (200 OK)
+  router.post('/v1/guard/preflight/sandbox', (req: Request, res: Response) => {
+    const parsed = PreflightSandboxRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        error: 'Invalid sandbox scenario',
+        details: parsed.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+      });
+      return;
+    }
+    const report = preflightGuardService.evaluateSandbox(parsed.data.scenario);
+    res.json({
+      source: 'sovereign-guard:interactive-sandbox',
+      sandbox: true,
+      scenario: parsed.data.scenario,
+      data: report,
+    });
   });
 
   // Unified Pre-Flight Decision Guardrail: 10 sats / $0.010 USDC (L402 + x402 + MPP)

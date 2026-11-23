@@ -82,7 +82,7 @@ describe('Hosted Remote Streamable HTTP MCP (/mcp)', () => {
     const parsed = JSON.parse(jsonLine);
     const toolNames = parsed.result.tools.map((t: any) => t.name);
 
-    assert.equal(toolNames.length, 7);
+    assert.equal(toolNames.length, 10);
     assert.ok(toolNames.includes('get_bitcoin_smart_fees'));
     assert.ok(toolNames.includes('check_rbf_fraud_shield'));
     assert.ok(toolNames.includes('get_next_block_xray'));

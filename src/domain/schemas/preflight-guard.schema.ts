@@ -58,11 +58,56 @@ export const GuardFindingSchema = z.object({
 
 export const PreflightGuardVerdictSchema = z.enum(['ALLOW', 'WARN', 'BLOCK']);
 
+export const PreflightAttestationSchema = z.object({
+  nodeId: z.string().min(1).max(120),
+  verdict: PreflightGuardVerdictSchema,
+  targetProtocol: z.enum(['evm', 'btc']),
+  riskScore: z.number().min(0).max(100),
+  reportHash: z.string().regex(/^[0-9a-fA-F]{64}$/, 'Must be a 64-character SHA-256 hex digest'),
+  timestamp: z.number().int().positive(),
+  signature: z.string().regex(/^[0-9a-fA-F]{64}$/, 'Must be a 64-character HMAC-SHA256 hex signature'),
+});
+
+export const PreflightAttestationVerifyRequestSchema = z.object({
+  inspectedAt: z.string().min(10).max(64).optional(),
+  attestation: PreflightAttestationSchema,
+});
+
+export const PreflightSandboxScenarioSchema = z.enum([
+  'clean-base-usdc',
+  'eip7702-drainer',
+  'btc-rbf-conflict',
+]);
+
+export const PreflightSandboxRequestSchema = z.object({
+  scenario: PreflightSandboxScenarioSchema,
+});
+
 export type EvmPreflightRequest = z.infer<typeof EvmPreflightRequestSchema>;
 export type BtcPreflightRequest = z.infer<typeof BtcPreflightRequestSchema>;
 export type PreflightGuardRequest = z.infer<typeof PreflightGuardRequestSchema>;
 export type GuardFinding = z.infer<typeof GuardFindingSchema>;
 export type PreflightGuardVerdict = z.infer<typeof PreflightGuardVerdictSchema>;
+export type PreflightAttestationVerifyRequest = z.infer<typeof PreflightAttestationVerifyRequestSchema>;
+export type PreflightSandboxScenario = z.infer<typeof PreflightSandboxScenarioSchema>;
+
+export interface PreflightGuardAttestation {
+  nodeId: string;
+  verdict: PreflightGuardVerdict;
+  targetProtocol: 'evm' | 'btc';
+  riskScore: number;
+  reportHash: string;
+  timestamp: number;
+  signature: string;
+}
+
+export interface PreflightGuardSla {
+  tier: 'SERVICE_CREDIT_10X';
+  coverage: string;
+  remedy: string;
+  termsUrl: string;
+  disclaimer: string;
+}
 
 export interface PreflightGuardReport {
   verdict: PreflightGuardVerdict;
@@ -73,4 +118,6 @@ export interface PreflightGuardReport {
   details: Record<string, unknown>;
   summary: string;
   inspectedAt: string;
+  attestation?: PreflightGuardAttestation;
+  sla?: PreflightGuardSla;
 }
