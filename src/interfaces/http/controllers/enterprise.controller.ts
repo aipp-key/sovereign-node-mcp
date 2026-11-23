@@ -80,9 +80,8 @@ export function createEnterpriseRouter(
       data: {
         inquiryId,
         createdAt,
-        selectedProducts: record.selectedProducts,
-        preferredSettlement: record.preferredSettlement,
-        monthlyVolume: record.monthlyVolume,
+        scenario: record.scenario,
+        interests: record.interests,
         slaResponseTarget: '< 12 hours (Direct Engineering & Architecture Desk)',
       },
     });
