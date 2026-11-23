@@ -112,15 +112,15 @@ export function createOracleFeedsRouter(
   router.use('/v1/chain/evm/gas-pulse', attachDualRailCors);
   router.use('/v1/chain/btc/whale-tape', attachDualRailCors);
 
-  // Zero-wait RAM Stablecoin Peg & Depeg Risk Oracle (2 sats / $0.002 USDC)
+  // Zero-wait RAM Stablecoin Peg & Depeg Risk Oracle (1 sat / $0.001 USDC)
   router.get(
     '/v1/intel/stablecoin-peg',
     validateStablecoinQuery,
     requireFreshStablecoins(oracleFeedsService),
     createL402Middleware(l402Service, {
-      priceSats: 2,
-      priceUsdcAtomic: '2000',
-      priceUsdDisplay: '$0.002',
+      priceSats: 1,
+      priceUsdcAtomic: '1000',
+      priceUsdDisplay: '$0.001',
       resourceName: 'stablecoin-peg-oracle',
       description:
         'Zero-wait multi-venue USD peg oracle for USDC, USDT, USDe and DAI with signed bps deviation and depegRiskScore (0-100).',
@@ -140,15 +140,15 @@ export function createOracleFeedsRouter(
     },
   );
 
-  // Zero-wait EVM Multi-Chain Gas & Blob Base Fee Pulse (2 sats / $0.002 USDC)
+  // Zero-wait EVM Multi-Chain Gas & Blob Base Fee Pulse (1 sat / $0.001 USDC)
   router.get(
     '/v1/chain/evm/gas-pulse',
     validateGasPulseQuery,
     requireFreshGasPulse(oracleFeedsService),
     createL402Middleware(l402Service, {
-      priceSats: 2,
-      priceUsdcAtomic: '2000',
-      priceUsdDisplay: '$0.002',
+      priceSats: 1,
+      priceUsdcAtomic: '1000',
+      priceUsdDisplay: '$0.001',
       resourceName: 'evm-gas-pulse',
       description:
         'Live WebSocket newHeads gas pulse across Ethereum, Base and Arbitrum: baseFeeGwei, EIP-4844 blobBaseFeeGwei, block utilization and 12-block trend.',
@@ -168,15 +168,15 @@ export function createOracleFeedsRouter(
     },
   );
 
-  // Zero-wait Bare-Metal Bitcoin Core ZMQ rawtx Whale Tape (3 sats / $0.003 USDC)
+  // Zero-wait Bare-Metal Bitcoin Core ZMQ rawtx Whale Tape (5 sats / $0.005 USDC)
   router.get(
     '/v1/chain/btc/whale-tape',
     validateWhaleTapeQuery,
     requireFreshWhaleTape(oracleFeedsService),
     createL402Middleware(l402Service, {
-      priceSats: 3,
-      priceUsdcAtomic: '3000',
-      priceUsdDisplay: '$0.003',
+      priceSats: 5,
+      priceUsdcAtomic: '5000',
+      priceUsdDisplay: '$0.005',
       resourceName: 'btc-zmq-whale-tape',
       description:
         'Real-time bare-metal Bitcoin Core v31.1 ZMQ rawtx mempool stream capturing large unconfirmed transactions (>= minBtc, default 10 BTC) over 24h rolling window.',

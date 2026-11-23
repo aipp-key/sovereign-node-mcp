@@ -22,7 +22,7 @@ Every endpoint supports instant, accountless pay-per-call settlement over three 
 ## Production Capability Endpoints (https://node.sovroute.com)
 - \`POST /v1/chain/evm/eip7702-shield\` (5 sats L402 / $0.005 Base USDC):
   **EIP-7702 AuthTx Security Scanner** (Tool: \`inspect_eip7702_authorization\`) — Inspects Pectra \`authorization_list\` delegations for wallet drainer bytecode (\`SELFDESTRUCT\`, unverified \`DELEGATECALL\`, ERC-20 \`transferFrom\`/\`approve\` selectors), audited smart account standards, and cross-chain replay risk (\`chainId=0\`). Returns \`SAFE_VERIFIED\`, \`SUSPICIOUS_UNVERIFIED\`, or \`CRITICAL_DRAIN_RISK\`.
-- \`GET /v1/chain/btc/next-block-xray\` & \`GET /v1/chain/btc/next-block-xray/:txid\` (3 sats L402 / $0.003 Base USDC):
+- \`GET /v1/chain/btc/next-block-xray\` & \`GET /v1/chain/btc/next-block-xray/:txid\` (5 sats L402 / $0.005 Base USDC):
   **Live Next-Block Miner Template X-Ray** (Tool: \`get_next_block_xray\`) — Queries \`getblocktemplate\` on bare-metal Bitcoin Core v31.1 to reveal the exact ~3,000–4,000 transactions selected for the next block, cutoff fee rate (\`cutoffFeeRateSatPerVb\`), block fill %, top whale fees, and exact queue rank (\`rankInBlock\`, \`GUARANTEED_NEXT_BLOCK\` vs \`QUEUED_FOR_LATER_BLOCK\`) for any \`txid\`.
 - \`POST /v1/chain/btc/simulate-tx\` (5 sats L402 / $0.005 Base USDC):
   **Zero-Broadcast Consensus & Script Dry-Run Simulator** (Tool: \`simulate_raw_transaction\`) — Runs \`testmempoolaccept\` + \`decoderawtransaction\` against live Bitcoin Core v31.1 UTXO set with **0% P2P network broadcast** (\`broadcastedToNetwork: false\`). Validates scripts, Taproot/SegWit witness, and BIP-125 RBF signaling before an agent ever broadcasts to the public network.
@@ -32,21 +32,21 @@ Every endpoint supports instant, accountless pay-per-call settlement over three 
   **PyTorch ONNX Neural Bytecode Risk Classifier** — Scores raw EVM bytecode or on-chain contract addresses (\`chainId\` + \`address\`) using an in-memory ONNX neural network trained on audited vs drainer bytecode patterns (\`BENIGN_PATTERN\`, \`SUSPICIOUS_ML\`, \`DRAINER_ML_DETECTED\`).
 - \`POST /v1/omni/pay-lightning\` (25 sats / $0.025 via Solana, Base, Arbitrum, or L402):
   **SUB-LIG Walletless Cross-Chain Lightning Bridge** (Tool: \`pay_lightning_invoice\`) — AI agents with only Solana (\`SOL\`/\`USDC\`) or EVM (\`Base\`/\`Arbitrum\`/\`USDC\`/\`ETH\`) wallets pay via Quad-Rail and pass \`{"invoice": "lnbc..."}\` (up to 25 sats); Sovereign Node Engine instantly settles the BOLT-11 invoice over Phoenixd and returns the cryptographic \`paymentPreimage\`.
-- \`GET /v1/intel/microstructure?symbol=BTC|ETH|SOL\` (3 sats L402 / $0.003 Base USDC):
+- \`GET /v1/intel/microstructure?symbol=BTC|ETH|SOL\` (5 sats L402 / $0.005 Base USDC):
   **Zero-Wait 4-Exchange Microstructure Oracle** — In-memory public WebSocket streams from Binance, Bybit, OKX, and Hyperliquid returning orderbook imbalance, cross-exchange spread (bps), 1m/5m CVD, funding rates, and liquidation cascade score.
-- \`GET /v1/intel/polymarket-edge?asset=BTC|ETH|SOL\` (4 sats L402 / $0.004 Base USDC):
+- \`GET /v1/intel/polymarket-edge?asset=BTC|ETH|SOL\` (5 sats L402 / $0.005 Base USDC):
   **Live Polymarket CLOB vs Spot Edge** — Real-time Polymarket CLOB orderbook probabilities and Gamma 24h volume paired with live 4-exchange spot price and orderbook imbalance.
-- \`GET /v1/intel/funding-arb?symbol=BTC|ETH|SOL\` (3 sats L402 / $0.003 Base USDC):
+- \`GET /v1/intel/funding-arb?symbol=BTC|ETH|SOL\` (5 sats L402 / $0.005 Base USDC):
   **Cross-Exchange Funding Carry & Spot-Perp Basis** — Live 8h funding rates (bps + APR) and spot-perp basis across Binance, Bybit, and OKX.
-- \`GET /v1/intel/options-skew?asset=BTC|ETH\` (4 sats L402 / $0.004 Base USDC):
+- \`GET /v1/intel/options-skew?asset=BTC|ETH\` (5 sats L402 / $0.005 Base USDC):
   **Deribit DVOL & Options Skew Oracle** — Real-time Deribit DVOL volatility index, market regime, ATM IV, OTM put-call skew, and open interest ratio.
-- \`GET /v1/intel/stablecoin-peg?symbol=USDC|USDT|USDE|DAI\` (2 sats L402 / $0.002 Base USDC):
+- \`GET /v1/intel/stablecoin-peg?symbol=USDC|USDT|USDE|DAI\` (1 sat L402 / $0.001 Base USDC):
   **Zero-Wait Stablecoin Peg & Depeg Oracle** — Multi-venue USD peg tracker across Kraken, Coinbase and Binance Spot WebSockets with signed bps deviation and depeg risk score (0-100).
-- \`GET /v1/chain/evm/gas-pulse?chain=ethereum|base|arbitrum\` (2 sats L402 / $0.002 Base USDC):
+- \`GET /v1/chain/evm/gas-pulse?chain=ethereum|base|arbitrum\` (1 sat L402 / $0.001 Base USDC):
   **Zero-Wait EVM Gas & EIP-4844 Blob Pulse** — Real-time \`newHeads\` WebSocket tracker across Ethereum, Base and Arbitrum reporting baseFeeGwei, blobBaseFeeGwei, gas utilization and trend.
-- \`GET /v1/chain/btc/whale-tape?minBtc=10&limit=25\` (3 sats L402 / $0.003 Base USDC):
+- \`GET /v1/chain/btc/whale-tape?minBtc=10&limit=25\` (5 sats L402 / $0.005 Base USDC):
   **Bare-Metal ZMQ rawtx Whale Tape** — Subscribes directly to local Bitcoin Core v31.1 \`zmqpubrawtx\` stream and indexes unconfirmed whale transactions (\`>= 10 BTC\` default) over a 24h rolling window.
-- \`GET /v1/chain/btc/mempool\` (2 sats L402 / $0.002 Base USDC):
+- \`GET /v1/chain/btc/mempool\` (1 sat L402 / $0.001 Base USDC):
   **Deep Mempool Entropy & Congestion Engine** (Tool: \`get_mempool_entropy\`) — Extracts live unconfirmed transaction count (\`txCount\`), virtual backlog size in bytes (\`vsizeBytes\`), total pending miner fee pool in satoshis (\`totalFeeSats\`), floor/median/fastest fee tiers backed by \`estimatesmartfee\`, and dynamic network congestion level (\`LOW\`, \`MODERATE\`, \`HIGH\`, \`EXTREME\`).
 - \`GET /v1/chain/btc/fees\` (1 sat L402 / $0.001 Base USDC):
   **Bitcoin Core Smart Fee Projections** (Tool: \`get_bitcoin_smart_fees\`) — Real-time \`estimatesmartfee\` projections (\`fastestSatPerVb\` for 1-2 blocks, \`halfHourSatPerVb\`, \`hourSatPerVb\`, \`economicSatPerVb\` for 6 blocks).
@@ -169,7 +169,7 @@ export function renderX402Manifest(): Record<string, unknown> {
         method: 'GET',
         description:
           'Queries getblocktemplate on bare-metal Bitcoin Core v31.1 to reveal the exact ~3,500 transactions selected for the next block, cutoff fee rate, and queue ranking.',
-        price: '0.003',
+        price: '0.005',
         unit: 'USDC',
         extensions: {
           bazaar: {
@@ -233,7 +233,7 @@ export function renderX402Manifest(): Record<string, unknown> {
         method: 'GET',
         description:
           'Extracts live unconfirmed tx count, virtual backlog size, total pending miner fee pool, and congestion level.',
-        price: '0.002',
+        price: '0.001',
         unit: 'USDC',
         extensions: {
           bazaar: {

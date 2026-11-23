@@ -44,9 +44,9 @@ export function buildSecurityAndWatchtowerPaths(
         operationId: 'inspectEvmAddressSafety',
         summary: 'EVM Address, Contract & Token Safety Scanner',
         description:
-          'Classifies EOA, EIP-7702 delegated EOA, EIP-1967 proxy, or ERC-20 token; checks privileged mint/pause/blacklist controls, SELFDESTRUCT opcode, and ONNX drainer score. Price: 4 sats (L402) or $0.004 USDC (x402).',
+          'Classifies EOA, EIP-7702 delegated EOA, EIP-1967 proxy, or ERC-20 token; checks privileged mint/pause/blacklist controls, SELFDESTRUCT opcode, and ONNX drainer score. Price: 5 sats (L402) or $0.005 USDC (x402).',
         tags: ['Transaction Security'],
-        'x-payment-info': tripleRail('0.004', 4),
+        'x-payment-info': tripleRail('0.005', 5),
         requestBody: {
           required: true,
           content: {
@@ -74,9 +74,9 @@ export function buildSecurityAndWatchtowerPaths(
         operationId: 'inspectEvmAddressSafetyBatch',
         summary: 'Batch EVM Address & Token Safety Scanner (up to 10 addresses)',
         description:
-          'Screens up to 10 EVM addresses in parallel (token, router, spender, recipient) and returns an aggregate overallVerdict and per-address risk reports. Price: 15 sats (L402) or $0.015 USDC (x402).',
+          'Screens up to 10 EVM addresses in parallel (token, router, spender, recipient) and returns an aggregate overallVerdict and per-address risk reports. Price: 10 sats (L402) or $0.010 USDC (x402).',
         tags: ['Transaction Security'],
-        'x-payment-info': tripleRail('0.015', 15),
+        'x-payment-info': tripleRail('0.010', 10),
         requestBody: {
           required: true,
           content: {

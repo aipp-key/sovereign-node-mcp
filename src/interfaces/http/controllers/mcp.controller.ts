@@ -27,13 +27,13 @@ const MCP_CORS_HEADERS: Record<string, string> = {
 const TOOL_PRICING: Record<string, { priceSats: number; priceUsdcAtomic: string; priceUsdDisplay: string }> = {
   get_bitcoin_smart_fees: { priceSats: 1, priceUsdcAtomic: '1000', priceUsdDisplay: '$0.001' },
   verify_block_header: { priceSats: 1, priceUsdcAtomic: '1000', priceUsdDisplay: '$0.001' },
-  get_mempool_entropy: { priceSats: 2, priceUsdcAtomic: '2000', priceUsdDisplay: '$0.002' },
-  get_next_block_xray: { priceSats: 3, priceUsdcAtomic: '3000', priceUsdDisplay: '$0.003' },
+  get_mempool_entropy: { priceSats: 1, priceUsdcAtomic: '1000', priceUsdDisplay: '$0.001' },
+  get_next_block_xray: { priceSats: 5, priceUsdcAtomic: '5000', priceUsdDisplay: '$0.005' },
   check_rbf_fraud_shield: { priceSats: 5, priceUsdcAtomic: '5000', priceUsdDisplay: '$0.005' },
   simulate_raw_transaction: { priceSats: 5, priceUsdcAtomic: '5000', priceUsdDisplay: '$0.005' },
   inspect_eip7702_authorization: { priceSats: 5, priceUsdcAtomic: '5000', priceUsdDisplay: '$0.005' },
   simulate_evm_tx: { priceSats: 5, priceUsdcAtomic: '5000', priceUsdDisplay: '$0.005' },
-  inspect_evm_address_safety: { priceSats: 4, priceUsdcAtomic: '4000', priceUsdDisplay: '$0.004' },
+  inspect_evm_address_safety: { priceSats: 5, priceUsdcAtomic: '5000', priceUsdDisplay: '$0.005' },
   preflight_transaction_guard: { priceSats: 10, priceUsdcAtomic: '10000', priceUsdDisplay: '$0.010' },
 };
 
@@ -281,9 +281,9 @@ export function createMcpRouter(
     if (isToolCall) {
       const toolName = String(req.body?.params?.name || 'mcp-tool');
       const pricing = TOOL_PRICING[toolName] || {
-        priceSats: 3,
-        priceUsdcAtomic: '3000',
-        priceUsdDisplay: '$0.003',
+        priceSats: 5,
+        priceUsdcAtomic: '5000',
+        priceUsdDisplay: '$0.005',
       };
 
       const runPayPerCallGate = async (): Promise<boolean> => {

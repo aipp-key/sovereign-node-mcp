@@ -134,15 +134,15 @@ export function createMarketIntelRouter(
     next();
   });
 
-  // Zero-wait RAM snapshot across Binance, Bybit, OKX, Hyperliquid (3 sats / $0.003 USDC)
+  // Zero-wait RAM snapshot across Binance, Bybit, OKX, Hyperliquid (5 sats / $0.005 USDC)
   router.get(
     '/v1/intel/microstructure',
     validateMicrostructureQuery,
     requireFreshMicrostructure(marketIntelService),
     createL402Middleware(l402Service, {
-      priceSats: 3,
-      priceUsdcAtomic: '3000',
-      priceUsdDisplay: '$0.003',
+      priceSats: 5,
+      priceUsdcAtomic: '5000',
+      priceUsdDisplay: '$0.005',
       resourceName: 'cross-exchange-microstructure',
       description:
         'Live in-memory microstructure across Binance, Bybit, OKX and Hyperliquid: orderbook imbalance, cross-exchange spread (bps), 1m/5m CVD, funding and liquidation cascade score.',
@@ -169,15 +169,15 @@ export function createMarketIntelRouter(
     },
   );
 
-  // Zero-wait RAM Polymarket CLOB + Gamma paired with live exchange spot price (4 sats / $0.004 USDC)
+  // Zero-wait RAM Polymarket CLOB + Gamma paired with live exchange spot price (5 sats / $0.005 USDC)
   router.get(
     '/v1/intel/polymarket-edge',
     validatePolymarketQuery,
     requireFreshPolymarket(marketIntelService),
     createL402Middleware(l402Service, {
-      priceSats: 4,
-      priceUsdcAtomic: '4000',
-      priceUsdDisplay: '$0.004',
+      priceSats: 5,
+      priceUsdcAtomic: '5000',
+      priceUsdDisplay: '$0.005',
       resourceName: 'polymarket-spot-edge',
       description:
         'Live Polymarket CLOB orderbook probability and depth paired with real-time 4-exchange spot price and orderbook imbalance.',
@@ -204,15 +204,15 @@ export function createMarketIntelRouter(
     },
   );
 
-  // Zero-wait RAM Cross-Exchange Funding & Spot-Perp Basis Arbitrage (3 sats / $0.003 USDC)
+  // Zero-wait RAM Cross-Exchange Funding & Spot-Perp Basis Arbitrage (5 sats / $0.005 USDC)
   router.get(
     '/v1/intel/funding-arb',
     validateMicrostructureQuery,
     requireFreshFundingArb(marketIntelService),
     createL402Middleware(l402Service, {
-      priceSats: 3,
-      priceUsdcAtomic: '3000',
-      priceUsdDisplay: '$0.003',
+      priceSats: 5,
+      priceUsdcAtomic: '5000',
+      priceUsdDisplay: '$0.005',
       resourceName: 'funding-basis-arb',
       description:
         'Cross-exchange funding rate carry and Binance spot-to-perp basis (bps + annualized APR) across Binance, Bybit and OKX.',
@@ -233,15 +233,15 @@ export function createMarketIntelRouter(
     },
   );
 
-  // Zero-wait RAM Deribit DVOL + 25-Delta Options Skew Oracle (4 sats / $0.004 USDC)
+  // Zero-wait RAM Deribit DVOL + 25-Delta Options Skew Oracle (5 sats / $0.005 USDC)
   router.get(
     '/v1/intel/options-skew',
     validateOptionsQuery,
     requireFreshOptions(marketIntelService),
     createL402Middleware(l402Service, {
-      priceSats: 4,
-      priceUsdcAtomic: '4000',
-      priceUsdDisplay: '$0.004',
+      priceSats: 5,
+      priceUsdcAtomic: '5000',
+      priceUsdDisplay: '$0.005',
       resourceName: 'deribit-options-skew',
       description:
         'Live Deribit DVOL volatility index, market regime (CALM/ELEVATED/PANIC), ATM IV, OTM put-call skew and options OI ratio.',

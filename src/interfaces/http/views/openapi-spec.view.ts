@@ -60,7 +60,7 @@ export function renderOpenApiSpec(): Record<string, unknown> {
           operationId: 'getNextBlockXray',
           summary: 'Live Miner Candidate Block Template X-Ray & Queue Rank',
           description:
-            'Queries getblocktemplate on bare-metal Bitcoin Core v31.1 to reveal the live candidate block transaction count, cutoff fee rate (sat/vB), median/top fee rates, block fill percentage, top whale transactions, and optional exact queue rank (rankInBlock, GUARANTEED_NEXT_BLOCK vs QUEUED_FOR_LATER_BLOCK) for a given txid query parameter. Price: 3 sats (L402 Lightning) or $0.003 USDC (Base x402).',
+            'Queries getblocktemplate on bare-metal Bitcoin Core v31.1 to reveal the live candidate block transaction count, cutoff fee rate (sat/vB), median/top fee rates, block fill percentage, top whale transactions, and optional exact queue rank (rankInBlock, GUARANTEED_NEXT_BLOCK vs QUEUED_FOR_LATER_BLOCK) for a given txid query parameter. Price: 5 sats (L402 Lightning) or $0.005 USDC (Base x402).',
           tags: ['Bitcoin Security & Mempool Forensics'],
           parameters: [
             {
@@ -71,7 +71,7 @@ export function renderOpenApiSpec(): Record<string, unknown> {
               schema: { type: 'string', pattern: '^[0-9a-fA-F]{64}$' },
             },
           ],
-          'x-payment-info': TRIPLE_RAIL_PAYMENT('0.003', 3),
+          'x-payment-info': TRIPLE_RAIL_PAYMENT('0.005', 5),
           responses: {
             '200': {
               description: 'Live next-block miner candidate template X-Ray',
@@ -232,9 +232,9 @@ export function renderOpenApiSpec(): Record<string, unknown> {
           operationId: 'getMempoolEntropy',
           summary: 'Deep Mempool Entropy & Congestion Engine',
           description:
-            'Returns real-time Bitcoin mempool depth from bare-metal Bitcoin Core v31.1: unconfirmed txCount, virtual backlog size in bytes (vsizeBytes), total pending miner fee pool in satoshis (totalFeeSats), floor/median/fastest fee rates (sat/vB), and dynamic congestion rating (LOW, MODERATE, HIGH, EXTREME). Price: 2 sats (L402 Lightning) or $0.002 USDC (Base x402).',
+            'Returns real-time Bitcoin mempool depth from bare-metal Bitcoin Core v31.1: unconfirmed txCount, virtual backlog size in bytes (vsizeBytes), total pending miner fee pool in satoshis (totalFeeSats), floor/median/fastest fee rates (sat/vB), and dynamic congestion rating (LOW, MODERATE, HIGH, EXTREME). Price: 1 sat (L402 Lightning) or $0.001 USDC (Base x402).',
           tags: ['Bitcoin Security & Mempool Forensics'],
-          'x-payment-info': TRIPLE_RAIL_PAYMENT('0.002', 2),
+          'x-payment-info': TRIPLE_RAIL_PAYMENT('0.001', 1),
           responses: {
             '200': { description: 'Deep mempool entropy and congestion state' },
             '402': RESPONSE_402,
@@ -374,7 +374,7 @@ export function renderOpenApiSpec(): Record<string, unknown> {
           operationId: 'getCrossExchangeMicrostructure',
           summary: 'Zero-Wait 4-Exchange Microstructure & Liquidation Oracle',
           description:
-            'Reads in-memory public WebSocket streams from Binance, Bybit, OKX and Hyperliquid to compute orderbook imbalance, cross-exchange spread (bps), 1m/5m CVD, funding rates and liquidation cascade score. Price: 3 sats (L402) or $0.003 USDC (x402).',
+            'Reads in-memory public WebSocket streams from Binance, Bybit, OKX and Hyperliquid to compute orderbook imbalance, cross-exchange spread (bps), 1m/5m CVD, funding rates and liquidation cascade score. Price: 5 sats (L402) or $0.005 USDC (x402).',
           tags: ['Data & Market Oracles'],
           parameters: [
             {
@@ -385,7 +385,7 @@ export function renderOpenApiSpec(): Record<string, unknown> {
               schema: { type: 'string', enum: ['BTC', 'ETH', 'SOL'], default: 'BTC' },
             },
           ],
-          'x-payment-info': TRIPLE_RAIL_PAYMENT('0.003', 3),
+          'x-payment-info': TRIPLE_RAIL_PAYMENT('0.005', 5),
           responses: {
             '200': { description: 'In-memory cross-exchange microstructure snapshot' },
             '400': { description: 'Invalid symbol query parameter' },
@@ -398,7 +398,7 @@ export function renderOpenApiSpec(): Record<string, unknown> {
           operationId: 'getPolymarketEdge',
           summary: 'Live Polymarket CLOB Probability vs 4-Exchange Spot Reference',
           description:
-            'Combines active Polymarket CLOB WebSocket orderbook probabilities and Gamma 24h volume with live 4-exchange spot price and orderbook imbalance in RAM. Price: 4 sats (L402) or $0.004 USDC (x402).',
+            'Combines active Polymarket CLOB WebSocket orderbook probabilities and Gamma 24h volume with live 4-exchange spot price and orderbook imbalance in RAM. Price: 5 sats (L402) or $0.005 USDC (x402).',
           tags: ['Data & Market Oracles'],
           parameters: [
             {
@@ -409,7 +409,7 @@ export function renderOpenApiSpec(): Record<string, unknown> {
               schema: { type: 'string', enum: ['BTC', 'ETH', 'SOL'] },
             },
           ],
-          'x-payment-info': TRIPLE_RAIL_PAYMENT('0.004', 4),
+          'x-payment-info': TRIPLE_RAIL_PAYMENT('0.005', 5),
           responses: {
             '200': { description: 'Live Polymarket CLOB probability and spot reference snapshot' },
             '400': { description: 'Invalid asset query parameter' },
@@ -422,7 +422,7 @@ export function renderOpenApiSpec(): Record<string, unknown> {
           operationId: 'getFundingBasisArbitrage',
           summary: 'Cross-Exchange Funding Carry & Spot-Perp Basis Oracle',
           description:
-            'Compares live funding rates (bps and annualized APR) and Binance spot-perp basis across perpetual venues in RAM to surface the optimal delta-neutral carry spread. Price: 3 sats (L402) or $0.003 USDC (x402).',
+            'Compares live funding rates (bps and annualized APR) and Binance spot-perp basis across perpetual venues in RAM to surface the optimal delta-neutral carry spread. Price: 5 sats (L402) or $0.005 USDC (x402).',
           tags: ['Data & Market Oracles'],
           parameters: [
             {
@@ -433,7 +433,7 @@ export function renderOpenApiSpec(): Record<string, unknown> {
               schema: { type: 'string', enum: ['BTC', 'ETH', 'SOL'], default: 'BTC' },
             },
           ],
-          'x-payment-info': TRIPLE_RAIL_PAYMENT('0.003', 3),
+          'x-payment-info': TRIPLE_RAIL_PAYMENT('0.005', 5),
           responses: {
             '200': { description: 'In-memory funding arbitrage and spot-perp basis snapshot' },
             '400': { description: 'Invalid symbol query parameter' },
@@ -446,7 +446,7 @@ export function renderOpenApiSpec(): Record<string, unknown> {
           operationId: 'getDeribitOptionsSkew',
           summary: 'Deribit DVOL Volatility Regime & Options Put/Call Skew',
           description:
-            'Streams Deribit DVOL index via WebSocket and pairs it with live ATM IV, OTM put-call skew, and open interest ratio from the full Deribit options chain. Price: 4 sats (L402) or $0.004 USDC (x402).',
+            'Streams Deribit DVOL index via WebSocket and pairs it with live ATM IV, OTM put-call skew, and open interest ratio from the full Deribit options chain. Price: 5 sats (L402) or $0.005 USDC (x402).',
           tags: ['Data & Market Oracles'],
           parameters: [
             {
@@ -457,7 +457,7 @@ export function renderOpenApiSpec(): Record<string, unknown> {
               schema: { type: 'string', enum: ['BTC', 'ETH'], default: 'BTC' },
             },
           ],
-          'x-payment-info': TRIPLE_RAIL_PAYMENT('0.004', 4),
+          'x-payment-info': TRIPLE_RAIL_PAYMENT('0.005', 5),
           responses: {
             '200': { description: 'In-memory Deribit DVOL and options skew snapshot' },
             '400': { description: 'Invalid asset query parameter' },
@@ -470,7 +470,7 @@ export function renderOpenApiSpec(): Record<string, unknown> {
           operationId: 'getStablecoinPeg',
           summary: 'Multi-Venue Stablecoin Peg & Depeg Risk Oracle',
           description:
-            'Zero-wait USD peg oracle across Kraken, Coinbase and Binance Spot WebSockets tracking USDC, USDT, USDe and DAI deviation (bps) and depeg risk score. Price: 2 sats (L402) or $0.002 USDC (x402).',
+            'Zero-wait USD peg oracle across Kraken, Coinbase and Binance Spot WebSockets tracking USDC, USDT, USDe and DAI deviation (bps) and depeg risk score. Price: 1 sat (L402) or $0.001 USDC (x402).',
           tags: ['Data & Market Oracles'],
           parameters: [
             {
@@ -481,7 +481,7 @@ export function renderOpenApiSpec(): Record<string, unknown> {
               schema: { type: 'string', enum: ['USDC', 'USDT', 'USDE', 'DAI'] },
             },
           ],
-          'x-payment-info': TRIPLE_RAIL_PAYMENT('0.002', 2),
+          'x-payment-info': TRIPLE_RAIL_PAYMENT('0.001', 1),
           responses: {
             '200': { description: 'In-memory multi-venue stablecoin peg snapshot' },
             '400': { description: 'Invalid stablecoin symbol query parameter' },
@@ -494,7 +494,7 @@ export function renderOpenApiSpec(): Record<string, unknown> {
           operationId: 'getEvmGasPulse',
           summary: 'Multi-Chain EVM WebSocket Gas & Blob Base Fee Pulse',
           description:
-            'Streams newHeads over PublicNode WebSockets for Ethereum, Base and Arbitrum to return live baseFeeGwei, EIP-4844 blobBaseFeeGwei, gas utilization and 12-block trend. Price: 2 sats (L402) or $0.002 USDC (x402).',
+            'Streams newHeads over PublicNode WebSockets for Ethereum, Base and Arbitrum to return live baseFeeGwei, EIP-4844 blobBaseFeeGwei, gas utilization and 12-block trend. Price: 1 sat (L402) or $0.001 USDC (x402).',
           tags: ['EVM Pre-Flight Security'],
           parameters: [
             {
@@ -505,7 +505,7 @@ export function renderOpenApiSpec(): Record<string, unknown> {
               schema: { type: 'string', enum: ['ethereum', 'base', 'arbitrum'] },
             },
           ],
-          'x-payment-info': TRIPLE_RAIL_PAYMENT('0.002', 2),
+          'x-payment-info': TRIPLE_RAIL_PAYMENT('0.001', 1),
           responses: {
             '200': { description: 'Zero-wait EVM gas and blob fee snapshot' },
             '400': { description: 'Invalid chain query parameter' },
@@ -518,7 +518,7 @@ export function renderOpenApiSpec(): Record<string, unknown> {
           operationId: 'getBtcWhaleTape',
           summary: 'Bare-Metal Bitcoin Core ZMQ rawtx Whale Transaction Tape',
           description:
-            'Subscribes directly to bare-metal sovereign-bitcoind v31.1 ZMQ rawtx frames and decodes large unconfirmed transactions (>= minBtc, default 10 BTC) in a 24h rolling window. Price: 3 sats (L402) or $0.003 USDC (x402).',
+            'Subscribes directly to bare-metal sovereign-bitcoind v31.1 ZMQ rawtx frames and decodes large unconfirmed transactions (>= minBtc, default 10 BTC) in a 24h rolling window. Price: 5 sats (L402) or $0.005 USDC (x402).',
           tags: ['Bitcoin Mainnet Intelligence'],
           parameters: [
             {
@@ -536,7 +536,7 @@ export function renderOpenApiSpec(): Record<string, unknown> {
               schema: { type: 'integer', minimum: 1, maximum: 100, default: 25 },
             },
           ],
-          'x-payment-info': TRIPLE_RAIL_PAYMENT('0.003', 3),
+          'x-payment-info': TRIPLE_RAIL_PAYMENT('0.005', 5),
           responses: {
             '200': { description: 'Bare-metal ZMQ rawtx whale tape snapshot' },
             '400': { description: 'Invalid whale-tape query parameters' },

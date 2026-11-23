@@ -214,9 +214,9 @@ export function createEvmShieldRouter(
       next();
     },
     createL402Middleware(l402Service, {
-      priceSats: 4,
-      priceUsdcAtomic: '4000',
-      priceUsdDisplay: '$0.004',
+      priceSats: 5,
+      priceUsdcAtomic: '5000',
+      priceUsdDisplay: '$0.005',
       resourceName: 'evm-address-safety',
       description:
         'EVM Address, Contract & Token Safety Scanner: classifies EOA/EIP-7702/Proxy/ERC-20, checks privileged mint/pause/blacklist controls, dangerous opcodes, and ONNX drainer score.',
@@ -235,7 +235,7 @@ export function createEvmShieldRouter(
     }
   );
 
-  // Batch EVM Address, Contract & Token Safety Scanner (up to 10 addresses): 15 sats / $0.015 USDC
+  // Batch EVM Address, Contract & Token Safety Scanner (up to 10 addresses): 10 sats / $0.010 USDC
   router.post(
     '/v1/chain/evm/address-safety/batch',
     (req: Request, res: Response, next: NextFunction) => {
@@ -251,9 +251,9 @@ export function createEvmShieldRouter(
       next();
     },
     createL402Middleware(l402Service, {
-      priceSats: 15,
-      priceUsdcAtomic: '15000',
-      priceUsdDisplay: '$0.015',
+      priceSats: 10,
+      priceUsdcAtomic: '10000',
+      priceUsdDisplay: '$0.010',
       resourceName: 'evm-address-safety-batch',
       description:
         'Batch EVM Address, Contract & Token Safety Scanner: inspects up to 10 addresses in parallel with aggregate verdict and per-address risk breakdown.',

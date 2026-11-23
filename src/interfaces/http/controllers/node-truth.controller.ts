@@ -94,8 +94,8 @@ export function createNodeTruthRouter(
           path: '/v1/chain/btc/mempool',
           alias: '/v1/truth/mempool',
           method: 'GET',
-          priceSats: 2,
-          priceUsd: '$0.002',
+          priceSats: 1,
+          priceUsd: '$0.001',
           desc: 'Deep Mempool Entropy & Congestion Oracle',
         },
         {
@@ -110,8 +110,8 @@ export function createNodeTruthRouter(
           path: '/v1/chain/btc/next-block-xray',
           alias: '/v1/truth/next-block-xray',
           method: 'GET',
-          priceSats: 3,
-          priceUsd: '$0.003',
+          priceSats: 5,
+          priceUsd: '$0.005',
           desc: 'Live Miner Candidate Block Template X-Ray & Queue Rank Oracle',
         },
         {
@@ -219,13 +219,13 @@ export function createNodeTruthRouter(
     );
   });
 
-  // Protected: Mempool Entropy Signal (2 sats / $0.002 USDC)
+  // Protected: Mempool Entropy Signal (1 sat / $0.001 USDC)
   router.get(
     ['/v1/chain/btc/mempool', '/v1/truth/mempool'],
     createL402Middleware(l402Service, {
-      priceSats: 2,
-      priceUsdcAtomic: '2000',
-      priceUsdDisplay: '$0.002',
+      priceSats: 1,
+      priceUsdcAtomic: '1000',
+      priceUsdDisplay: '$0.001',
       resourceName: 'mempool-entropy',
       description:
         'Deep Bitcoin mempool entropy: unconfirmed tx count, vMB block backlog, fee pool in sats, and dynamic congestion rating from bare-metal Bitcoin Core v31.1.',
@@ -375,7 +375,7 @@ export function createNodeTruthRouter(
     }
   );
 
-  // Protected: Live Miner Candidate Block Template X-Ray (3 sats / $0.003 USDC)
+  // Protected: Live Miner Candidate Block Template X-Ray (5 sats / $0.005 USDC)
   router.get(
     [
       '/v1/chain/btc/next-block-xray',
@@ -385,9 +385,9 @@ export function createNodeTruthRouter(
     ],
     validateOptionalTxid,
     createL402Middleware(l402Service, {
-      priceSats: 3,
-      priceUsdcAtomic: '3000',
-      priceUsdDisplay: '$0.003',
+      priceSats: 5,
+      priceUsdcAtomic: '5000',
+      priceUsdDisplay: '$0.005',
       resourceName: 'next-block-xray',
       description:
         'Live Bitcoin Core v31.1 getblocktemplate X-Ray: exact candidate block cutoff fee rate, total fees, whale transactions, and exact queue rank for any txid.',
