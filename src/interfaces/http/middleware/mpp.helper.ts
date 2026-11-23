@@ -156,6 +156,49 @@ export function buildMppUsdcChallenge(params: MppUsdcChallengeParams): {
   };
 }
 
+export const TEMPO_PATH_USD_CONTRACT = '0x20C000000000000000000000b9537d11c60E8b50';
+export const TEMPO_CHAIN_ID = 4217;
+
+export interface MppTempoChallengeParams {
+  id: string;
+  realm: string;
+  amountAtomic: string;
+  recipient: string;
+  description?: string;
+  expiresAtSec: number;
+}
+
+/**
+ * Builds the MPP Tempo Challenge string per IETF draft-httpauth-payment-01 / mppx
+ * WWW-Authenticate: Payment id="...", realm="...", method="tempo", intent="charge", request="...", expires="..."
+ */
+export function buildMppTempoChallenge(params: MppTempoChallengeParams): {
+  headerValue: string;
+  requestPayload: Record<string, unknown>;
+  requestBase64Url: string;
+} {
+  const requestPayload = {
+    amount: params.amountAtomic,
+    currency: TEMPO_PATH_USD_CONTRACT,
+    methodDetails: {
+      chainId: TEMPO_CHAIN_ID,
+    },
+    recipient: params.recipient,
+  };
+
+  const canonicalJson = canonicalizeJson(requestPayload);
+  const requestBase64Url = toBase64Url(canonicalJson);
+  const expiresIso = new Date(params.expiresAtSec * 1000).toISOString();
+
+  const headerValue = `Payment id="${params.id}", realm="${params.realm}", method="tempo", intent="charge", request="${requestBase64Url}", expires="${expiresIso}"`;
+
+  return {
+    headerValue,
+    requestPayload,
+    requestBase64Url,
+  };
+}
+
 /**
  * Parses and validates an incoming Authorization: Payment <token> header
  * per draft-httpauth-payment-01, draft-lightning-charge-00 and draft-usdc-charge-00

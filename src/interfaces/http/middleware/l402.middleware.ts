@@ -12,6 +12,7 @@ import { verifyAgenticMarketSignature } from './agentic-market.helper.js';
 import {
   buildMppLightningChallenge,
   buildMppUsdcChallenge,
+  buildMppTempoChallenge,
   parseMppAuthorizationHeader,
   buildMppPaymentReceiptHeader,
 } from './mpp.helper.js';
@@ -399,7 +400,7 @@ export function createL402Middleware(
       return;
     }
 
-    const host = req.get('host') || 'node.sovroute.com';
+    const host = req.get('x-forwarded-host') || req.get('host') || 'node.sovroute.com';
     const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
     const fullResourceUrl = `${proto}://${host}${req.originalUrl || req.path}`;
 
@@ -817,10 +818,20 @@ export function createL402Middleware(
         expiresAtSec: challenge.expiresAt,
       });
 
+      const mppTempo = buildMppTempoChallenge({
+        id: `ch_tempo_${challenge.paymentHash.slice(0, 16)}`,
+        realm: host,
+        amountAtomic: usdcAtomic,
+        recipient: BASE_PAY_TO_ADDRESS,
+        description,
+        expiresAtSec: challenge.expiresAt,
+      });
+
       res.setHeader('WWW-Authenticate', [
-        `L402 macaroon="${challenge.macaroon}", invoice="${challenge.invoice}"`,
+        mppTempo.headerValue,
         mppLightning.headerValue,
         mppUsdc.headerValue,
+        `L402 macaroon="${challenge.macaroon}", invoice="${challenge.invoice}"`,
       ]);
       res.setHeader('Payment-Required', base64X402Header);
       res.setHeader(

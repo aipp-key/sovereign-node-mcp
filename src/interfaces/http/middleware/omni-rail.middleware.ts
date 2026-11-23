@@ -12,6 +12,7 @@ import {
   attachPostPaymentFailureGuard,
   tryHandleRetryVoucherHeader,
 } from './retry-voucher.helper.js';
+import { buildMppTempoChallenge } from './mpp.helper.js';
 
 export const SOLANA_PAY_TO_ADDRESS =
   process.env.SOLANA_PAY_TO_ADDRESS || 'J7gD37zihrYnq7gcMU3ywTFP1G5UAU9SfSNpxfQBKFs7';
@@ -265,7 +266,7 @@ export function createOmniRailMiddleware(
       return;
     }
 
-    const host = req.get('host') || 'node.sovroute.com';
+    const host = req.get('x-forwarded-host') || req.get('host') || 'node.sovroute.com';
     const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
     const fullResourceUrl = `${proto}://${host}${req.originalUrl || req.path}`;
 
@@ -747,10 +748,19 @@ export function createOmniRailMiddleware(
         accepts,
       };
 
-      res.setHeader(
-        'WWW-Authenticate',
-        `L402 macaroon="${challenge.macaroon}", invoice="${challenge.invoice}"`
-      );
+      const mppTempo = buildMppTempoChallenge({
+        id: `ch_tempo_${challenge.paymentHash.slice(0, 16)}`,
+        realm: req.get('x-forwarded-host') || req.get('host') || 'sovroute.com',
+        amountAtomic: options.priceUsdcAtomic,
+        recipient: BASE_PAY_TO_ADDRESS,
+        description: options.description,
+        expiresAtSec: challenge.expiresAt,
+      });
+
+      res.setHeader('WWW-Authenticate', [
+        mppTempo.headerValue,
+        `L402 macaroon="${challenge.macaroon}", invoice="${challenge.invoice}"`,
+      ]);
       res.setHeader(
         'Payment-Required',
         Buffer.from(JSON.stringify(omniHeaderPayload)).toString('base64')
