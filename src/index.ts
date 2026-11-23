@@ -22,6 +22,7 @@ import { createMarketIntelRouter } from './interfaces/http/controllers/market-in
 import { createOracleFeedsRouter } from './interfaces/http/controllers/oracle-feeds.controller.js';
 import { createMcpRouter } from './interfaces/http/controllers/mcp.controller.js';
 import { createCrewAiStatusRouter } from './interfaces/http/controllers/crewai-status.controller.js';
+import { createEnterpriseRouter } from './interfaces/http/controllers/enterprise.controller.js';
 import { createInternalCoreRouter } from './interfaces/http/controllers/internal-core.controller.js';
 
 dotenv.config();
@@ -102,6 +103,9 @@ async function bootstrap() {
     preflightGuardService
   );
   const crewAiStatusRouter = createCrewAiStatusRouter(crewAiStatusService);
+  const enterpriseRouter = createEnterpriseRouter({
+    coreBridgeKey: process.env.CORE_BRIDGE_KEY,
+  });
   const internalCoreRouter = createInternalCoreRouter(nodeTruthService, {
     coreBridgeKey: process.env.CORE_BRIDGE_KEY,
   });
@@ -114,6 +118,7 @@ async function bootstrap() {
   app.use(oracleFeedsRouter);
   app.use(mcpRouter);
   app.use(crewAiStatusRouter);
+  app.use(enterpriseRouter);
   app.use(internalCoreRouter);
 
   // 4. Clean JSON 404 & Error Handlers (prevents Express HTML 404 & stack-trace leaks)
