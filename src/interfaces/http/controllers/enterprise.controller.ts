@@ -7,6 +7,7 @@ import {
   EnterpriseInquiryRequestSchema,
 } from '../../../domain/schemas/enterprise-inquiry.schema.js';
 import { DUAL_RAIL_CORS_HEADERS } from '../middleware/l402.middleware.js';
+import type { EnterpriseNotifier } from '../../../infrastructure/mail/enterprise-mailer.adapter.js';
 
 const INQUIRY_LOG_PATH =
   process.env.ENTERPRISE_INQUIRY_LOG_PATH ||
@@ -14,7 +15,9 @@ const INQUIRY_LOG_PATH =
 
 const recentInquiries: EnterpriseInquiryRecord[] = [];
 
-export function createEnterpriseRouter(options: { coreBridgeKey?: string } = {}): Router {
+export function createEnterpriseRouter(
+  options: { coreBridgeKey?: string; notifier?: EnterpriseNotifier | null } = {}
+): Router {
   const router = Router();
 
   router.use('/v1/enterprise', (req: Request, res: Response, next: NextFunction) => {
@@ -62,6 +65,13 @@ export function createEnterpriseRouter(options: { coreBridgeKey?: string } = {})
       await fs.appendFile(INQUIRY_LOG_PATH, `${JSON.stringify(record)}\n`, 'utf8');
     } catch (err) {
       console.error('[EnterpriseRouter] Failed to append inquiry to disk:', err);
+    }
+
+    // Fire-and-forget: mail failure must never fail the visitor's submission.
+    if (options.notifier) {
+      options.notifier.notify(record).catch((err) => {
+        console.error(`[EnterpriseRouter] Mail notify failed for ${inquiryId}:`, err?.message ?? err);
+      });
     }
 
     res.status(201).json({

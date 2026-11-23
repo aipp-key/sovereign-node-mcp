@@ -48,6 +48,7 @@
     "@types/qrcode": "^1.5.6",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "nodemailer": "^10.6.1",
     "onnxruntime-node": "^1.31.1",
     "qrcode": "^1.5.4",
     "viem": "^2.23.4",
@@ -56,6 +57,7 @@
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.13.4",
+    "@types/nodemailer": "^8.0.2",
     "tsx": "^4.19.3",
     "typescript": "^5.7.3"
   }

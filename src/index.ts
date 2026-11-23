@@ -23,6 +23,10 @@ import { createOracleFeedsRouter } from './interfaces/http/controllers/oracle-fe
 import { createMcpRouter } from './interfaces/http/controllers/mcp.controller.js';
 import { createCrewAiStatusRouter } from './interfaces/http/controllers/crewai-status.controller.js';
 import { createEnterpriseRouter } from './interfaces/http/controllers/enterprise.controller.js';
+import {
+  SmtpEnterpriseNotifier,
+  loadEnterpriseMailConfig,
+} from './infrastructure/mail/enterprise-mailer.adapter.js';
 import { createInternalCoreRouter } from './interfaces/http/controllers/internal-core.controller.js';
 
 dotenv.config();
@@ -103,8 +107,10 @@ async function bootstrap() {
     preflightGuardService
   );
   const crewAiStatusRouter = createCrewAiStatusRouter(crewAiStatusService);
+  const mailConfig = loadEnterpriseMailConfig(process.env);
   const enterpriseRouter = createEnterpriseRouter({
     coreBridgeKey: process.env.CORE_BRIDGE_KEY,
+    notifier: mailConfig ? new SmtpEnterpriseNotifier(mailConfig) : null,
   });
   const internalCoreRouter = createInternalCoreRouter(nodeTruthService, {
     coreBridgeKey: process.env.CORE_BRIDGE_KEY,
