@@ -1,6 +1,7 @@
 # @aipp/sovereign-node-mcp
 
 [![npm version](https://img.shields.io/npm/v/@aipp/sovereign-node-mcp.svg?color=orange)](https://www.npmjs.com/package/@aipp/sovereign-node-mcp)
+[![Glama MCP Server](https://glama.ai/mcp/servers/aipp-key/sovereign-node-mcp/badge)](https://glama.ai/mcp/servers/aipp-key/sovereign-node-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![MCP Compliant](https://img.shields.io/badge/Model_Context_Protocol-Verified-green.svg)](https://modelcontextprotocol.io)
 
@@ -67,7 +68,7 @@ Add this to your `claude_desktop_config.json` or `.cursor/mcp.json`:
 * **Agent Context & Guidance:** `https://sovroute.com/llms.txt`
 * **Circle for Agents Score:** `100/100 Grade A (Runtime-verified)`
 * **Satring Directory:** `#1097 [domain verified]`
-* **Glama MCP Catalog:** `sovereign-node-mcp [verified & indexed]`
+* **Glama MCP Catalog:** [https://glama.ai/mcp/servers/aipp-key/sovereign-node-mcp](https://glama.ai/mcp/servers/aipp-key/sovereign-node-mcp)
 
 ---
 
