@@ -3,8 +3,14 @@
   "name": "io.github.sovroutecore/sovroute-mcp",
   "title": "SovRoute",
   "description": "Bare-metal Bitcoin Core v31.1 & EVM pre-sign security guardrails via MCP and HTTP 402.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "websiteUrl": "https://sovroute.com",
+  "icons": [
+    {
+      "src": "https://sovroute.com/sovroute-logo.png",
+      "mimeType": "image/png"
+    }
+  ],
   "repository": {
     "url": "https://github.com/aipp-key/sovereign-node-mcp",
     "source": "github"
