@@ -1,74 +1,18 @@
 {
-  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/registry/main/schema/server.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.sovroutecore/sovroute-mcp",
-  "title": "SovRoute Sovereign Node Intelligence & Security MCP",
-  "description": "Zero-trust Bitcoin Core v31.1 & EVM pre-sign security guardrails, cryptographically signed preflight attestations (10x SLA credit), EIP-7702 drainer detection, and 0-conf RBF shields for AI agents.",
-  "homepage": "https://sovroute.com",
-  "license": "MIT",
+  "title": "SovRoute",
+  "description": "Bare-metal Bitcoin Core v31.1 & EVM pre-sign security guardrails via MCP and HTTP 402.",
+  "version": "1.1.0",
+  "websiteUrl": "https://sovroute.com",
   "repository": {
-    "type": "git",
-    "url": "https://github.com/aipp-key/sovereign-node-mcp.git"
+    "url": "https://github.com/aipp-key/sovereign-node-mcp",
+    "source": "github"
   },
-  "package": {
-    "type": "npm",
-    "name": "@aipp/sovereign-node-mcp",
-    "version": "1.1.0"
-  },
-  "transports": [
+  "remotes": [
     {
       "type": "streamable-http",
-      "url": "https://node.sovroute.com/mcp",
-      "pricing": {
-        "freeTier": "15 evaluation calls/24h per IP",
-        "paid": "Multi-Rail L402 Lightning (1-10 sats), MPP, or Base & Arc L2 USDC ($0.001-$0.010)"
-      }
-    },
-    {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@aipp/sovereign-node-mcp"]
-    }
-  ],
-  "tools": [
-    {
-      "name": "preflight_transaction_guard",
-      "description": "Unified pre-flight decision guardrail returning ALLOW, WARN, or BLOCK with cryptographic HMAC-SHA256 node attestation and 10x SLA Service Credit across EVM or BTC."
-    },
-    {
-      "name": "simulate_evm_tx",
-      "description": "Dry-run an EVM transaction (eth_call + gas estimation), decode revert reasons, detect unlimited approvals, EIP-7702 targets, and ONNX drainer risk."
-    },
-    {
-      "name": "inspect_evm_address_safety",
-      "description": "Classify an EVM address (EOA, EIP-7702 delegated EOA, EIP-1967 proxy, or ERC-20 token), check privileged mint/pause/blacklist controls, SELFDESTRUCT, and ONNX drainer score."
-    },
-    {
-      "name": "inspect_eip7702_authorization",
-      "description": "Pectra EIP-7702 AuthTx security scanner for wallet drainer bytecode, smart account standards, and cross-chain replay risks."
-    },
-    {
-      "name": "get_next_block_xray",
-      "description": "Live getblocktemplate miner candidate block X-ray: cutoff fee rate, whale transactions, and queue ranking."
-    },
-    {
-      "name": "check_rbf_fraud_shield",
-      "description": "0-Conf Bitcoin RBF double-spend fraud shield: BIP-125 signaling, conflicting spends, and ancestor depth."
-    },
-    {
-      "name": "simulate_raw_transaction",
-      "description": "Zero-Broadcast Bitcoin Core v31.1 testmempoolaccept consensus & script dry-run simulator."
-    },
-    {
-      "name": "get_bitcoin_smart_fees",
-      "description": "Bitcoin Core v31.1 real-time smart fee projections (sat/vB) for fastest, half-hour, hour, and economic block targets."
-    },
-    {
-      "name": "get_mempool_entropy",
-      "description": "Direct Bitcoin Mainnet mempool state: unconfirmed tx count, vsize, total fee pool, and congestion level."
-    },
-    {
-      "name": "verify_block_header",
-      "description": "Synchronized Bitcoin Core v31.1 block header truth (height, hash, previousblockhash, merkleroot, bits, nonce, difficulty)."
+      "url": "https://node.sovroute.com/mcp"
     }
   ]
 }
