@@ -10,6 +10,7 @@ import { PreflightGuardService } from '../../../application/services/preflight-g
 import { L402Service } from '../../../application/services/l402.service.js';
 import { createL402Middleware } from '../middleware/l402.middleware.js';
 import { registerEvmAndGuardMcpTools } from './mcp-security-tools.helper.js';
+import { MCP_TOOL_METADATA, toStructuredResult } from '../../mcp/tool-metadata.js';
 
 const SANDBOX_CALLS_PER_DAY = Number(process.env.MCP_SANDBOX_CALLS_PER_DAY) || 15;
 const SANDBOX_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -85,12 +86,6 @@ function hasValidDemoBypass(req: Request): boolean {
   return crypto.timingSafeEqual(a, b);
 }
 
-function buildJsonResult(payload: unknown) {
-  return {
-    content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }],
-  };
-}
-
 function buildErrorResult(message: string) {
   return {
     isError: true,
@@ -109,81 +104,111 @@ function buildHostedMcpServer(
     version: '1.0.0',
   });
 
-  server.tool(
+  const smartFeesMeta = MCP_TOOL_METADATA.get_bitcoin_smart_fees;
+  server.registerTool(
     'get_bitcoin_smart_fees',
-    'Fetch real-time Bitcoin mainnet fee rates (sat/vB) estimated directly by sovereign Bitcoin Core v31.1 RPC.',
-    {},
+    {
+      title: smartFeesMeta.title,
+      description: smartFeesMeta.description,
+      annotations: smartFeesMeta.annotations,
+      outputSchema: smartFeesMeta.outputSchema,
+      inputSchema: {},
+    },
     async () => {
       try {
-        return buildJsonResult(await nodeTruthService.getSmartFeeEstimates());
+        return toStructuredResult(await nodeTruthService.getSmartFeeEstimates());
       } catch (err: any) {
         return buildErrorResult(`Failed to fetch Bitcoin smart fees: ${err?.message || 'unknown error'}`);
       }
     }
   );
 
-  server.tool(
+  const mempoolMeta = MCP_TOOL_METADATA.get_mempool_entropy;
+  server.registerTool(
     'get_mempool_entropy',
-    'Fetch live Bitcoin mainnet mempool statistics (unconfirmed tx count, vsize, fee pool) directly from Bitcoin Core RPC.',
-    {},
+    {
+      title: mempoolMeta.title,
+      description: mempoolMeta.description,
+      annotations: mempoolMeta.annotations,
+      outputSchema: mempoolMeta.outputSchema,
+      inputSchema: {},
+    },
     async () => {
       try {
-        return buildJsonResult(await nodeTruthService.getMempoolEntropy());
+        return toStructuredResult(await nodeTruthService.getMempoolEntropy());
       } catch (err: any) {
         return buildErrorResult(`Failed to query mempool entropy: ${err?.message || 'unknown error'}`);
       }
     }
   );
 
-  server.tool(
+  const rbfMeta = MCP_TOOL_METADATA.check_rbf_fraud_shield;
+  server.registerTool(
     'check_rbf_fraud_shield',
-    'Verify if an unconfirmed Bitcoin transaction is vulnerable to BIP-125 Replace-By-Fee (RBF) double-spend fraud.',
     {
-      txid: z.string().regex(/^[0-9a-fA-F]{64}$/).describe('64-character hex Bitcoin transaction ID'),
+      title: rbfMeta.title,
+      description: rbfMeta.description,
+      annotations: rbfMeta.annotations,
+      outputSchema: rbfMeta.outputSchema,
+      inputSchema: {
+        txid: z.string().regex(/^[0-9a-fA-F]{64}$/).describe('64-character hex Bitcoin transaction ID'),
+      },
     },
     async ({ txid }) => {
       try {
-        return buildJsonResult(await nodeTruthService.checkRbfShield(txid));
+        return toStructuredResult(await nodeTruthService.checkRbfShield(txid));
       } catch (err: any) {
         return buildErrorResult(`Failed to inspect RBF shield for ${txid}: ${err?.message || 'unknown error'}`);
       }
     }
   );
 
-  server.tool(
+  const xrayMeta = MCP_TOOL_METADATA.get_next_block_xray;
+  server.registerTool(
     'get_next_block_xray',
-    'Inspect live candidate block template (getblocktemplate) for cutoff fee rates and optional txid queue rank.',
     {
-      txid: z
-        .string()
-        .regex(/^[0-9a-fA-F]{64}$/)
-        .nullish()
-        .describe('Optional 64-character hex Bitcoin transaction ID to inspect for inclusion rank'),
+      title: xrayMeta.title,
+      description: xrayMeta.description,
+      annotations: xrayMeta.annotations,
+      outputSchema: xrayMeta.outputSchema,
+      inputSchema: {
+        txid: z
+          .string()
+          .regex(/^[0-9a-fA-F]{64}$/)
+          .nullish()
+          .describe('Optional 64-character hex Bitcoin transaction ID to inspect for inclusion rank'),
+      },
     },
     async ({ txid }) => {
       try {
-        return buildJsonResult(await nodeTruthService.getNextBlockXray(txid ?? undefined));
+        return toStructuredResult(await nodeTruthService.getNextBlockXray(txid ?? undefined));
       } catch (err: any) {
         return buildErrorResult(`Failed to inspect next-block template: ${err?.message || 'unknown error'}`);
       }
     }
   );
 
-  server.tool(
+  const simRawMeta = MCP_TOOL_METADATA.simulate_raw_transaction;
+  server.registerTool(
     'simulate_raw_transaction',
-    'Execute zero-broadcast Bitcoin Core v31.1 consensus & script validation (testmempoolaccept) without broadcasting to P2P network.',
     {
-      rawTxHex: z
-        .string()
-        .min(100)
-        .max(200000)
-        .regex(/^[0-9a-fA-F]+$/)
-        .refine((v) => v.length % 2 === 0, 'rawTxHex must have even length')
-        .describe('Hexadecimal signed raw Bitcoin transaction to simulate'),
+      title: simRawMeta.title,
+      description: simRawMeta.description,
+      annotations: simRawMeta.annotations,
+      outputSchema: simRawMeta.outputSchema,
+      inputSchema: {
+        rawTxHex: z
+          .string()
+          .min(100)
+          .max(200000)
+          .regex(/^[0-9a-fA-F]+$/)
+          .refine((v) => v.length % 2 === 0, 'rawTxHex must have even length')
+          .describe('Hexadecimal signed raw Bitcoin transaction to simulate'),
+      },
     },
     async ({ rawTxHex }) => {
       try {
-        return buildJsonResult(await nodeTruthService.simulateTxConsensus(rawTxHex));
+        return toStructuredResult(await nodeTruthService.simulateTxConsensus(rawTxHex));
       } catch (err: any) {
         const rawMsg = String(err?.message || 'unknown error');
         const safeMsg =
@@ -195,39 +220,51 @@ function buildHostedMcpServer(
     }
   );
 
-  server.tool(
+  const headerMeta = MCP_TOOL_METADATA.verify_block_header;
+  server.registerTool(
     'verify_block_header',
-    'Verify latest mined Bitcoin mainnet block header (height, hash, difficulty, timestamp) directly from Bitcoin Core RPC.',
-    {},
+    {
+      title: headerMeta.title,
+      description: headerMeta.description,
+      annotations: headerMeta.annotations,
+      outputSchema: headerMeta.outputSchema,
+      inputSchema: {},
+    },
     async () => {
       try {
-        return buildJsonResult(await nodeTruthService.getLatestBlockHeader());
+        return toStructuredResult(await nodeTruthService.getLatestBlockHeader());
       } catch (err: any) {
         return buildErrorResult(`Failed to verify block header: ${err?.message || 'unknown error'}`);
       }
     }
   );
 
-  server.tool(
+  const eip7702Meta = MCP_TOOL_METADATA.inspect_eip7702_authorization;
+  server.registerTool(
     'inspect_eip7702_authorization',
-    'Inspect an EIP-7702 (Pectra) authorization_list for wallet drainer risks, dangerous opcodes, and cross-chain replay vectors.',
     {
-      executionChainId: z.number().int().positive().nullish().describe('Target EVM execution chain ID'),
-      authorizationList: z
-        .array(
-          z.object({
-            chainId: z.union([z.number().int().nonnegative(), z.string()]),
-            address: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
-            nonce: z.union([z.number().int().nonnegative(), z.string()]),
-            bytecode: z.string().nullish(),
-          })
-        )
-        .min(1)
-        .max(50),
+      title: eip7702Meta.title,
+      description: eip7702Meta.description,
+      annotations: eip7702Meta.annotations,
+      outputSchema: eip7702Meta.outputSchema,
+      inputSchema: {
+        executionChainId: z.number().int().positive().nullish().describe('Target EVM execution chain ID'),
+        authorizationList: z
+          .array(
+            z.object({
+              chainId: z.union([z.number().int().nonnegative(), z.string()]),
+              address: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
+              nonce: z.union([z.number().int().nonnegative(), z.string()]),
+              bytecode: z.string().nullish(),
+            })
+          )
+          .min(1)
+          .max(50),
+      },
     },
     async ({ executionChainId, authorizationList }) => {
       try {
-        return buildJsonResult(
+        return toStructuredResult(
           await eip7702ShieldService.inspectAuthorizations({
             executionChainId: executionChainId ?? undefined,
             authorizationList: authorizationList.map((entry) => ({

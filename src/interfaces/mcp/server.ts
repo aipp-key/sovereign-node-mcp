@@ -6,6 +6,7 @@ import { ILightningPayer } from '../../application/interfaces/lightning-payer.in
 import { PhoenixdPayerAdapter } from '../../infrastructure/lightning/phoenixd-payer.adapter.js';
 import { NwcPayerAdapter } from '../../infrastructure/alby/nwc-payer.adapter.js';
 import { registerStdioSecurityMcpTools } from './stdio-security-tools.helper.js';
+import { MCP_TOOL_METADATA, toStructuredResult } from './tool-metadata.js';
 
 export interface SovereignMcpConfig {
   sovereignNodeUrl?: string;
@@ -60,10 +61,16 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
   });
 
   // Tool 1: get_bitcoin_smart_fees
-  server.tool(
+  const smartFeesMeta = MCP_TOOL_METADATA.get_bitcoin_smart_fees;
+  server.registerTool(
     'get_bitcoin_smart_fees',
-    'Fetch real-time sovereign Bitcoin network fee rates (sat/vB) estimated directly by Bitcoin Core RPC via L402 payment rail.',
-    {},
+    {
+      title: smartFeesMeta.title,
+      description: smartFeesMeta.description,
+      annotations: smartFeesMeta.annotations,
+      outputSchema: smartFeesMeta.outputSchema,
+      inputSchema: {},
+    },
     async () => {
       try {
         if (!agent) {
@@ -82,14 +89,7 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
           maxPriceSatsAllowed: maxPriceSats,
         });
 
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(data, null, 2),
-            },
-          ],
-        };
+        return toStructuredResult(data);
       } catch (error: any) {
         return {
           isError: true,
@@ -100,11 +100,17 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
   );
 
   // Tool 2: check_rbf_fraud_shield
-  server.tool(
+  const rbfMeta = MCP_TOOL_METADATA.check_rbf_fraud_shield;
+  server.registerTool(
     'check_rbf_fraud_shield',
-    'Verify if an unconfirmed transaction is vulnerable to Replace-By-Fee (RBF) double-spend fraud, checking BIP-125 signaling, fee rate, and unconfirmed ancestors.',
     {
-      txid: z.string().length(64).describe('The 64-character hex Bitcoin transaction ID'),
+      title: rbfMeta.title,
+      description: rbfMeta.description,
+      annotations: rbfMeta.annotations,
+      outputSchema: rbfMeta.outputSchema,
+      inputSchema: {
+        txid: z.string().length(64).describe('The 64-character hex Bitcoin transaction ID'),
+      },
     },
     async ({ txid }) => {
       try {
@@ -124,14 +130,7 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
           maxPriceSatsAllowed: maxPriceSats,
         });
 
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(data, null, 2),
-            },
-          ],
-        };
+        return toStructuredResult(data);
       } catch (error: any) {
         return {
           isError: true,
@@ -142,10 +141,16 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
   );
 
   // Tool 3: get_mempool_entropy
-  server.tool(
+  const mempoolMeta = MCP_TOOL_METADATA.get_mempool_entropy;
+  server.registerTool(
     'get_mempool_entropy',
-    'Fetch real-time Bitcoin mempool statistics directly from bare-metal Bitcoin Core node (unconfirmed tx count, total virtual size in MB, total fee pool in sats).',
-    {},
+    {
+      title: mempoolMeta.title,
+      description: mempoolMeta.description,
+      annotations: mempoolMeta.annotations,
+      outputSchema: mempoolMeta.outputSchema,
+      inputSchema: {},
+    },
     async () => {
       try {
         if (!agent) {
@@ -164,14 +169,7 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
           maxPriceSatsAllowed: maxPriceSats,
         });
 
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(data, null, 2),
-            },
-          ],
-        };
+        return toStructuredResult(data);
       } catch (error: any) {
         return {
           isError: true,
@@ -182,10 +180,16 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
   );
 
   // Tool 4: verify_block_header
-  server.tool(
+  const headerMeta = MCP_TOOL_METADATA.verify_block_header;
+  server.registerTool(
     'verify_block_header',
-    'Verify latest mined Bitcoin block header (height, hash, difficulty, block timestamp) directly from bare-metal Bitcoin Core RPC.',
-    {},
+    {
+      title: headerMeta.title,
+      description: headerMeta.description,
+      annotations: headerMeta.annotations,
+      outputSchema: headerMeta.outputSchema,
+      inputSchema: {},
+    },
     async () => {
       try {
         if (!agent) {
@@ -204,14 +208,7 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
           maxPriceSatsAllowed: maxPriceSats,
         });
 
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(data, null, 2),
-            },
-          ],
-        };
+        return toStructuredResult(data);
       } catch (error: any) {
         return {
           isError: true,
@@ -222,11 +219,17 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
   );
 
   // Tool 5: pay_lightning_invoice
-  server.tool(
+  const payMeta = MCP_TOOL_METADATA.pay_lightning_invoice;
+  server.registerTool(
     'pay_lightning_invoice',
-    'Autonomously pay any BOLT-11 Lightning invoice from the agent wallet and return cryptographic preimage and routing fee.',
     {
-      invoice: z.string().describe('BOLT-11 Lightning invoice string (starts with lnbc...)'),
+      title: payMeta.title,
+      description: payMeta.description,
+      annotations: payMeta.annotations,
+      outputSchema: payMeta.outputSchema,
+      inputSchema: {
+        invoice: z.string().describe('BOLT-11 Lightning invoice string (starts with lnbc...)'),
+      },
     },
     async ({ invoice }) => {
       try {
@@ -244,23 +247,12 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
 
         const result = await payer.payInvoice(invoice);
 
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(
-                {
-                  success: true,
-                  paymentHash: result.paymentHash,
-                  preimage: result.preimage,
-                  feeSat: result.feeSat,
-                },
-                null,
-                2
-              ),
-            },
-          ],
-        };
+        return toStructuredResult({
+          success: true,
+          paymentHash: result.paymentHash,
+          preimage: result.preimage,
+          feeSat: result.feeSat,
+        });
       } catch (error: any) {
         return {
           isError: true,
@@ -271,11 +263,17 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
   );
 
   // Tool 6: get_next_block_xray
-  server.tool(
+  const xrayMeta = MCP_TOOL_METADATA.get_next_block_xray;
+  server.registerTool(
     'get_next_block_xray',
-    'Inspect live candidate block template from bare-metal Bitcoin Core v31.1 getblocktemplate to reveal cutoff fee rates and exact tx queue rank (GUARANTEED_NEXT_BLOCK vs QUEUED_FOR_LATER).',
     {
-      txid: z.string().length(64).optional().describe('Optional 64-character hex Bitcoin transaction ID to inspect for inclusion rank'),
+      title: xrayMeta.title,
+      description: xrayMeta.description,
+      annotations: xrayMeta.annotations,
+      outputSchema: xrayMeta.outputSchema,
+      inputSchema: {
+        txid: z.string().length(64).optional().describe('Optional 64-character hex Bitcoin transaction ID to inspect for inclusion rank'),
+      },
     },
     async ({ txid }) => {
       try {
@@ -291,9 +289,7 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
           : `${sovereignNodeUrl}/v1/chain/btc/next-block-xray`;
 
         const data = await agent.fetch(url, { maxPriceSatsAllowed: maxPriceSats });
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        };
+        return toStructuredResult(data);
       } catch (error: any) {
         return {
           isError: true,
@@ -304,11 +300,17 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
   );
 
   // Tool 7: simulate_raw_transaction
-  server.tool(
+  const simRawMeta = MCP_TOOL_METADATA.simulate_raw_transaction;
+  server.registerTool(
     'simulate_raw_transaction',
-    'Execute zero-broadcast dry-run consensus & script validation (testmempoolaccept) against live Bitcoin Core v31.1 UTXO set without broadcasting to P2P network.',
     {
-      rawTxHex: z.string().describe('Hexadecimal signed raw Bitcoin transaction to simulate against consensus rules'),
+      title: simRawMeta.title,
+      description: simRawMeta.description,
+      annotations: simRawMeta.annotations,
+      outputSchema: simRawMeta.outputSchema,
+      inputSchema: {
+        rawTxHex: z.string().describe('Hexadecimal signed raw Bitcoin transaction to simulate against consensus rules'),
+      },
     },
     async ({ rawTxHex }) => {
       try {
@@ -326,9 +328,7 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
           maxPriceSatsAllowed: maxPriceSats,
         });
 
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        };
+        return toStructuredResult(data);
       } catch (error: any) {
         return {
           isError: true,
@@ -339,23 +339,29 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
   );
 
   // Tool 8: inspect_eip7702_authorization
-  server.tool(
+  const eip7702Meta = MCP_TOOL_METADATA.inspect_eip7702_authorization;
+  server.registerTool(
     'inspect_eip7702_authorization',
-    'Inspect an EIP-7702 (Pectra) authorization_list for wallet drainer risks, SELFDESTRUCT/DELEGATECALL opcodes, token drain selectors, and cross-chain replay vectors (chainId=0).',
     {
-      executionChainId: z.number().int().positive().optional().describe('Optional target EVM execution chain ID (e.g. 1, 8453, 42161)'),
-      authorizationList: z
-        .array(
-          z.object({
-            chainId: z.union([z.number().int().nonnegative(), z.string()]).describe('EIP-7702 authorization chainId (0 = wildcard cross-chain replay risk)'),
-            address: z.string().regex(/^0x[0-9a-fA-F]{40}$/).describe('Target delegation contract address'),
-            nonce: z.union([z.number().int().nonnegative(), z.string()]).describe('Account nonce for the authorization'),
-            bytecode: z.string().optional().describe('Optional pre-fetched EVM bytecode hex (0x...)'),
-          })
-        )
-        .min(1)
-        .max(50)
-        .describe('EIP-7702 authorization_list entries to scan'),
+      title: eip7702Meta.title,
+      description: eip7702Meta.description,
+      annotations: eip7702Meta.annotations,
+      outputSchema: eip7702Meta.outputSchema,
+      inputSchema: {
+        executionChainId: z.number().int().positive().optional().describe('Optional target EVM execution chain ID (e.g. 1, 8453, 42161)'),
+        authorizationList: z
+          .array(
+            z.object({
+              chainId: z.union([z.number().int().nonnegative(), z.string()]).describe('EIP-7702 authorization chainId (0 = wildcard cross-chain replay risk)'),
+              address: z.string().regex(/^0x[0-9a-fA-F]{40}$/).describe('Target delegation contract address'),
+              nonce: z.union([z.number().int().nonnegative(), z.string()]).describe('Account nonce for the authorization'),
+              bytecode: z.string().optional().describe('Optional pre-fetched EVM bytecode hex (0x...)'),
+            })
+          )
+          .min(1)
+          .max(50)
+          .describe('EIP-7702 authorization_list entries to scan'),
+      },
     },
     async ({ executionChainId, authorizationList }) => {
       try {
@@ -373,9 +379,7 @@ export function createSovereignMcpServer(config: SovereignMcpConfig = {}): {
           maxPriceSatsAllowed: maxPriceSats,
         });
 
-        return {
-          content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        };
+        return toStructuredResult(data);
       } catch (error: any) {
         return {
           isError: true,
