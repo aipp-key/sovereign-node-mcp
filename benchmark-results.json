@@ -1,0 +1,91 @@
+{
+  "generatedAt": "2026-11-24T14:57:25.124Z",
+  "totalCases": 36,
+  "mismatches": [],
+  "products": [
+    {
+      "product": "RBF Shield",
+      "cases": 12,
+      "tp": 6,
+      "fp": 0,
+      "tn": 6,
+      "fn": 0,
+      "accuracyPct": 100,
+      "precisionPct": 100,
+      "recallPct": 100,
+      "falsePositiveRatePct": 0,
+      "falseNegativeRatePct": 0,
+      "latencyMs": {
+        "mean": 0.228,
+        "p50": 0.058,
+        "p95": 1.882,
+        "max": 1.882
+      }
+    },
+    {
+      "product": "Transaction Simulator (BTC + EVM)",
+      "cases": 12,
+      "tp": 7,
+      "fp": 0,
+      "tn": 5,
+      "fn": 0,
+      "accuracyPct": 100,
+      "precisionPct": 100,
+      "recallPct": 100,
+      "falsePositiveRatePct": 0,
+      "falseNegativeRatePct": 0,
+      "latencyMs": {
+        "mean": 8.728,
+        "p50": 0.051,
+        "p95": 101.013,
+        "max": 101.013
+      }
+    },
+    {
+      "product": "Unified Preflight Guard",
+      "cases": 12,
+      "tp": 6,
+      "fp": 0,
+      "tn": 6,
+      "fn": 0,
+      "accuracyPct": 100,
+      "precisionPct": 100,
+      "recallPct": 100,
+      "falsePositiveRatePct": 0,
+      "falseNegativeRatePct": 0,
+      "latencyMs": {
+        "mean": 30.094,
+        "p50": 0.215,
+        "p95": 351.54,
+        "max": 351.54
+      }
+    }
+  ],
+  "attestation": {
+    "casesVerified": 12,
+    "tamperRejected": 12,
+    "verifyMeanMs": 0.053
+  },
+  "liveEdgeToBareMetalHttp": {
+    "sandboxPreflight": {
+      "url": "https://sovroute.com/v1/guard/preflight/sandbox",
+      "iterations": 10,
+      "statusOk": 10,
+      "meanMs": 154.5,
+      "p50Ms": 117.944,
+      "p95Ms": 386.096,
+      "minMs": 107,
+      "maxMs": 386.1
+    },
+    "verifyAttestation": {
+      "url": "https://sovroute.com/v1/guard/verify-attestation",
+      "iterations": 10,
+      "statusOk": 10,
+      "meanMs": 113.5,
+      "p50Ms": 112.29,
+      "p95Ms": 124.651,
+      "minMs": 103,
+      "maxMs": 124.7
+    }
+  }
+}
