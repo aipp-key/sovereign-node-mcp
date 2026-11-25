@@ -51,6 +51,25 @@ const EIP3009_TYPES = {
 const consumedX402Nonces = new Set<string>();
 const inFlightX402Nonces = new Set<string>();
 
+function attachMppRechallengeHeader(
+  res: Response,
+  params: { host: string; usdcAtomic: string; description: string },
+): void {
+  const idSuffix = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+  const expiresAtSec = Math.floor(Date.now() / 1000) + 3600;
+  const mppUsdc = buildMppUsdcChallenge({
+    id: `ch_usdc_${idSuffix}`,
+    realm: params.host,
+    amountAtomic: params.usdcAtomic,
+    recipient: BASE_PAY_TO_ADDRESS,
+    currency: BASE_USDC_CONTRACT,
+    description: params.description,
+    chainId: 8453,
+    expiresAtSec,
+  });
+  res.setHeader('WWW-Authenticate', mppUsdc.headerValue);
+}
+
 export function parseSafeUintBigInt(val: unknown): bigint | null {
   if (typeof val === 'bigint') {
     return val >= 0n ? val : null;
@@ -441,6 +460,19 @@ export function createL402Middleware(
           return next();
         }
 
+        try {
+          const freshChallenge = await l402Service.generateChallenge(
+            options.priceSats,
+            options.resourceName
+          );
+          res.setHeader(
+            'WWW-Authenticate',
+            `L402 macaroon="${freshChallenge.macaroon}", invoice="${freshChallenge.invoice}"`
+          );
+        } catch {
+          res.setHeader('WWW-Authenticate', `L402 realm="${host}"`);
+        }
+
         return res.status(402).json({
           error: 'Payment Verification Failed',
           details: verification.errorReason,
@@ -462,6 +494,7 @@ export function createL402Middleware(
       const parsedMpp = parseMppAuthorizationHeader(authHeader);
 
       if (!parsedMpp.isMpp || parsedMpp.error) {
+        attachMppRechallengeHeader(res, { host, usdcAtomic, description });
         return res.status(402).json({
           error: 'MPP Payment Verification Failed',
           details: parsedMpp.error || 'Invalid MPP credential structure.',
@@ -500,6 +533,7 @@ export function createL402Middleware(
             return next();
           }
 
+          attachMppRechallengeHeader(res, { host, usdcAtomic, description });
           return res.status(402).json({
             error: 'MPP Lightning Preimage Verification Failed',
             details:
@@ -522,6 +556,7 @@ export function createL402Middleware(
         const valueBigInt = parseSafeUintBigInt(auth.value);
         const requiredBigInt = BigInt(usdcAtomic);
         if (valueBigInt === null || valueBigInt < requiredBigInt) {
+          attachMppRechallengeHeader(res, { host, usdcAtomic, description });
           return res.status(402).json({
             error: 'MPP USDC Insufficient Amount',
             details: `Required ${usdcAtomic} atomic USDC, received ${valueBigInt?.toString() || '0'}.`,
@@ -540,6 +575,7 @@ export function createL402Middleware(
         });
 
         if (!x402Check.ok) {
+          attachMppRechallengeHeader(res, { host, usdcAtomic, description });
           return res.status(402).json({
             error: x402Check.error,
             details: x402Check.details,
@@ -563,6 +599,7 @@ export function createL402Middleware(
         return next();
       }
 
+      attachMppRechallengeHeader(res, { host, usdcAtomic, description });
       return res.status(402).json({
         error: 'MPP Unrecognized Payment Method',
         details: 'Currently supported MPP methods: lightning, usdc.',
