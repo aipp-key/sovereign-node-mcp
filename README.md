@@ -2,6 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@aipp/sovereign-node-mcp.svg?color=orange)](https://www.npmjs.com/package/@aipp/sovereign-node-mcp)
 [![Glama MCP Server](https://glama.ai/mcp/servers/aipp-key/sovereign-node-mcp/badge)](https://glama.ai/mcp/servers/aipp-key/sovereign-node-mcp)
+[![Open402](https://sovroute.com/v1/open402/badge.svg?url=https%3A%2F%2Fsovroute.com%2Fv1%2Fchain%2Fbtc%2Ftip)](https://sovroute.com/open402)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![MCP Compliant](https://img.shields.io/badge/Model_Context_Protocol-Verified-green.svg)](https://modelcontextprotocol.io)
 
