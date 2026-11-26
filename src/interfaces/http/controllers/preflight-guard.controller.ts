@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { L402Service } from '../../../application/services/l402.service.js';
 import { PreflightGuardService } from '../../../application/services/preflight-guard.service.js';
+import { getPreflightJwks } from '../../../application/services/preflight-attestation.helper.js';
 import {
   PreflightAttestationVerifyRequestSchema,
   PreflightGuardRequestSchema,
@@ -23,6 +24,12 @@ export function createPreflightGuardRouter(
       return;
     }
     next();
+  });
+
+  // Free Ed25519 JWKS Endpoint for Offline JWS Verification (200 OK)
+  router.get('/v1/guard/jwks.json', (_req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.json(getPreflightJwks());
   });
 
   // Free Cryptographic Attestation Verification Endpoint (200 OK)

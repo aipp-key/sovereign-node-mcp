@@ -55,6 +55,9 @@ test('PreflightGuardService returns ALLOW on clean EVM tx and BLOCK on severe st
   assert.ok(clean.attestation, 'Attestation must be attached');
   assert.equal(clean.attestation.verdict, 'ALLOW');
   assert.ok(clean.attestation.signature.length > 32);
+  assert.equal(clean.attestation.asymmetric?.alg, 'EdDSA');
+  assert.equal(clean.attestation.asymmetric?.algorithm, 'Ed25519');
+  assert.equal(clean.attestation.asymmetric?.jws.split('.').length, 3);
   assert.equal(clean.sla?.tier, 'SERVICE_CREDIT_10X');
 
   const verified = guard.verifyAttestation({
@@ -63,7 +66,23 @@ test('PreflightGuardService returns ALLOW on clean EVM tx and BLOCK on severe st
   });
   assert.equal(verified.valid, true);
   assert.equal(verified.signatureValid, true);
+  assert.equal(verified.asymmetricValid, true);
   assert.equal(verified.reportHashMatches, true);
+
+  // Offline verification using Node crypto & publicKeyJwk (zero network calls)
+  const { createPublicKey, verify: cryptoVerify } = await import('node:crypto');
+  const [hB64, pB64, sB64] = clean.attestation.asymmetric!.jws.split('.');
+  const pubKey = createPublicKey({
+    key: clean.attestation.asymmetric!.publicKeyJwk as any,
+    format: 'jwk',
+  });
+  assert.equal(
+    cryptoVerify(null, Buffer.from(`${hB64}.${pB64}`), pubKey, Buffer.from(sB64!, 'base64url')),
+    true
+  );
+  const claims = JSON.parse(Buffer.from(pB64!, 'base64url').toString('utf8'));
+  assert.equal(claims.verdict, 'ALLOW');
+  assert.equal(claims.reportHash, clean.attestation.reportHash);
 
   const tampered = guard.verifyAttestation({
     inspectedAt: clean.inspectedAt,

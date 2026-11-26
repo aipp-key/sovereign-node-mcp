@@ -58,6 +58,14 @@ export const GuardFindingSchema = z.object({
 
 export const PreflightGuardVerdictSchema = z.enum(['ALLOW', 'WARN', 'BLOCK']);
 
+export const PreflightAsymmetricAttestationSchema = z.object({
+  algorithm: z.literal('Ed25519'),
+  alg: z.literal('EdDSA'),
+  kid: z.string().min(1).max(64),
+  jws: z.string().min(16),
+  publicKeyJwk: z.record(z.unknown()),
+});
+
 export const PreflightAttestationSchema = z.object({
   nodeId: z.string().min(1).max(120),
   verdict: PreflightGuardVerdictSchema,
@@ -66,6 +74,7 @@ export const PreflightAttestationSchema = z.object({
   reportHash: z.string().regex(/^[0-9a-fA-F]{64}$/, 'Must be a 64-character SHA-256 hex digest'),
   timestamp: z.number().int().positive(),
   signature: z.string().regex(/^[0-9a-fA-F]{64}$/, 'Must be a 64-character HMAC-SHA256 hex signature'),
+  asymmetric: PreflightAsymmetricAttestationSchema.optional(),
 });
 
 export const PreflightAttestationVerifyRequestSchema = z.object({
@@ -91,6 +100,14 @@ export type PreflightGuardVerdict = z.infer<typeof PreflightGuardVerdictSchema>;
 export type PreflightAttestationVerifyRequest = z.infer<typeof PreflightAttestationVerifyRequestSchema>;
 export type PreflightSandboxScenario = z.infer<typeof PreflightSandboxScenarioSchema>;
 
+export interface PreflightAsymmetricAttestation {
+  algorithm: 'Ed25519';
+  alg: 'EdDSA';
+  kid: string;
+  jws: string;
+  publicKeyJwk: Record<string, unknown>;
+}
+
 export interface PreflightGuardAttestation {
   nodeId: string;
   verdict: PreflightGuardVerdict;
@@ -99,6 +116,7 @@ export interface PreflightGuardAttestation {
   reportHash: string;
   timestamp: number;
   signature: string;
+  asymmetric?: PreflightAsymmetricAttestation;
 }
 
 export interface PreflightGuardSla {

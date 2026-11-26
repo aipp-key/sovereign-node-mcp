@@ -1,11 +1,121 @@
-import { createHash, createHmac, timingSafeEqual } from 'crypto';
 import {
+  createHash,
+  createHmac,
+  createPrivateKey,
+  createPublicKey,
+  generateKeyPairSync,
+  sign as cryptoSign,
+  timingSafeEqual,
+  verify as cryptoVerify,
+  type KeyObject,
+} from 'crypto';
+import {
+  PreflightAsymmetricAttestation,
   PreflightAttestationVerifyRequest,
   PreflightGuardReport,
   PreflightSandboxScenario,
 } from '../../domain/schemas/preflight-guard.schema.js';
 
 const DEV_FALLBACK_SECRET = 'sovereign-l402-dev-secret-key-32b-min';
+
+interface Ed25519SignerState {
+  kid: string;
+  privateKey: KeyObject;
+  publicKey: KeyObject;
+  publicKeyJwk: Record<string, unknown>;
+}
+
+let cachedEd25519Signer: Ed25519SignerState | null = null;
+let cachedEd25519EnvValue: string | undefined;
+
+function deriveEd25519Kid(pubJwk: Record<string, unknown>): string {
+  const canonical = JSON.stringify({
+    crv: pubJwk.crv ?? 'Ed25519',
+    kty: pubJwk.kty ?? 'OKP',
+    x: pubJwk.x,
+  });
+  return createHash('sha256').update(canonical).digest('base64url').slice(0, 16);
+}
+
+function getEd25519Signer(): Ed25519SignerState {
+  const rawEnv = process.env.PREFLIGHT_ED25519_JWK?.trim();
+  if (cachedEd25519Signer && cachedEd25519EnvValue === rawEnv) {
+    return cachedEd25519Signer;
+  }
+
+  let privateKey: KeyObject;
+  let publicKey: KeyObject;
+
+  if (rawEnv) {
+    const parsed = JSON.parse(rawEnv) as Record<string, unknown>;
+    privateKey = createPrivateKey({ key: parsed as any, format: 'jwk' });
+    publicKey = createPublicKey(privateKey);
+  } else {
+    const kp = generateKeyPairSync('ed25519');
+    privateKey = kp.privateKey;
+    publicKey = kp.publicKey;
+  }
+
+  const rawPubJwk = publicKey.export({ format: 'jwk' }) as Record<string, unknown>;
+  const kid = deriveEd25519Kid(rawPubJwk);
+  const publicKeyJwk: Record<string, unknown> = {
+    kty: rawPubJwk.kty,
+    crv: rawPubJwk.crv,
+    x: rawPubJwk.x,
+    kid,
+    alg: 'EdDSA',
+    use: 'sig',
+  };
+
+  cachedEd25519Signer = { kid, privateKey, publicKey, publicKeyJwk };
+  cachedEd25519EnvValue = rawEnv;
+  return cachedEd25519Signer;
+}
+
+export function getPreflightJwks(): { keys: Record<string, unknown>[] } {
+  const { publicKeyJwk } = getEd25519Signer();
+  return { keys: [publicKeyJwk] };
+}
+
+function signEd25519JwsSync(claims: Record<string, unknown>): PreflightAsymmetricAttestation {
+  const { kid, privateKey, publicKeyJwk } = getEd25519Signer();
+  const headerB64 = Buffer.from(
+    JSON.stringify({ alg: 'EdDSA', typ: 'sovroute-attestation+jwt', kid })
+  ).toString('base64url');
+  const payloadB64 = Buffer.from(JSON.stringify(claims)).toString('base64url');
+  const signingInput = `${headerB64}.${payloadB64}`;
+  const sigB64 = cryptoSign(null, Buffer.from(signingInput), privateKey).toString('base64url');
+
+  return {
+    algorithm: 'Ed25519',
+    alg: 'EdDSA',
+    kid,
+    jws: `${signingInput}.${sigB64}`,
+    publicKeyJwk,
+  };
+}
+
+function verifyEd25519JwsSync(jws: string, jwkOverride?: Record<string, unknown>): boolean {
+  const parts = jws.split('.');
+  if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) return false;
+  try {
+    const header = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8')) as {
+      alg?: string;
+    };
+    if (header.alg !== 'EdDSA') return false;
+    const key = jwkOverride
+      ? createPublicKey({ key: jwkOverride as any, format: 'jwk' })
+      : getEd25519Signer().publicKey;
+    return cryptoVerify(
+      null,
+      Buffer.from(`${parts[0]}.${parts[1]}`),
+      key,
+      Buffer.from(parts[2], 'base64url')
+    );
+  } catch {
+    return false;
+  }
+}
 
 export function resolveAttestationSecret(): string {
   const envSecret = process.env.MACAROON_SECRET?.trim();
@@ -25,6 +135,18 @@ export function attachPreflightAttestationAndSla(report: PreflightGuardReport): 
   const reportHash = createHash('sha256').update(payloadToSign).digest('hex');
   const signature = createHmac('sha256', secret).update(reportHash).digest('hex');
 
+  const asymmetric = signEd25519JwsSync({
+    iss: process.env.PUBLIC_NODE_URL || 'https://node.sovroute.com',
+    sub: 'preflight-guard',
+    nodeId,
+    verdict: report.verdict,
+    targetProtocol: report.protocol,
+    riskScore: report.riskScore,
+    reportHash,
+    inspectedAt: report.inspectedAt,
+    iat: Math.floor(timestamp / 1000),
+  });
+
   report.attestation = {
     nodeId,
     verdict: report.verdict,
@@ -33,6 +155,7 @@ export function attachPreflightAttestationAndSla(report: PreflightGuardReport): 
     reportHash,
     timestamp,
     signature,
+    asymmetric,
   };
 
   report.sla = {
@@ -51,6 +174,7 @@ export function attachPreflightAttestationAndSla(report: PreflightGuardReport): 
 export interface AttestationVerificationResult {
   valid: boolean;
   signatureValid: boolean;
+  asymmetricValid: boolean | null;
   reportHashMatches: boolean | null;
   nodeId: string;
   verdict: string;
@@ -72,6 +196,11 @@ export function verifyPreflightAttestation(
   const signatureValid =
     actualBuf.length === expectedBuf.length && timingSafeEqual(actualBuf, expectedBuf);
 
+  let asymmetricValid: boolean | null = null;
+  if (attestation.asymmetric?.jws) {
+    asymmetricValid = verifyEd25519JwsSync(attestation.asymmetric.jws);
+  }
+
   let reportHashMatches: boolean | null = null;
   if (inspectedAt) {
     const reconstructedPayload = `${attestation.nodeId}:${attestation.targetProtocol}:${attestation.verdict}:${attestation.riskScore}:${inspectedAt}:${attestation.timestamp}`;
@@ -79,11 +208,15 @@ export function verifyPreflightAttestation(
     reportHashMatches = expectedHash.toLowerCase() === attestation.reportHash.toLowerCase();
   }
 
-  const valid = signatureValid && (reportHashMatches === null || reportHashMatches);
+  const valid =
+    signatureValid &&
+    (asymmetricValid === null || asymmetricValid) &&
+    (reportHashMatches === null || reportHashMatches);
 
   return {
     valid,
     signatureValid,
+    asymmetricValid,
     reportHashMatches,
     nodeId: attestation.nodeId,
     verdict: attestation.verdict,

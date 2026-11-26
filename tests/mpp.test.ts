@@ -336,6 +336,79 @@ test('MPP E2E: Express server issues standard MPP challenge and settles Lightnin
     } finally {
       delete process.env.X402_SKIP_VERIFY;
     }
+
+    // 5. Client pays via MPP Tempo PathUSD on-chain settlement
+    const tempoTxHash = '0x' + 'cd'.repeat(32);
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: any, init?: any) => {
+      const target = typeof input === 'string' ? input : input?.url;
+      if (target === 'https://tempo-rpc.test') {
+        return new Response(
+          JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            result: {
+              status: '0x1',
+              from: '0x' + '22'.repeat(20),
+              logs: [
+                {
+                  address: '0x20C000000000000000000000b9537d11c60E8b50',
+                  topics: [
+                    '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+                    '0x000000000000000000000000' + '22'.repeat(20),
+                    '0x000000000000000000000000488cbdad29e60d8bae53fff4c4252c9711df9784',
+                  ],
+                  data: '0x00000000000000000000000000000000000000000000000000000000000061a8',
+                },
+              ],
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      return originalFetch(input, init);
+    }) as typeof fetch;
+
+    process.env.TEMPO_RPC_URL = 'https://tempo-rpc.test';
+    try {
+      const tempoToken = {
+        challenge: {
+          id: 'ch_tempo_live_01',
+          realm: `127.0.0.1:${port}`,
+          method: 'tempo',
+          intent: 'charge',
+        },
+        payload: {
+          txHash: tempoTxHash,
+        },
+      };
+
+      const tempoHeader = `Payment ${toBase64Url(canonicalizeJson(tempoToken))}`;
+      const parsedTempo = parseMppAuthorizationHeader(tempoHeader);
+      assert.strictEqual(parsedTempo.method, 'tempo');
+      assert.strictEqual(parsedTempo.tempoTxHash, tempoTxHash);
+
+      const resTempo = await originalFetch(`${baseUrl}/test-mpp`, {
+        headers: { Authorization: tempoHeader },
+      });
+      assert.strictEqual(resTempo.status, 200);
+      const bodyTempo = await resTempo.json();
+      assert.strictEqual(bodyTempo.success, true);
+      assert.strictEqual(bodyTempo.paymentRail, 'MPP-TEMPO-PATHUSD');
+      const tempoReceiptHdr = resTempo.headers.get('payment-receipt');
+      assert.ok(tempoReceiptHdr);
+      const decodedTempoReceipt = JSON.parse(fromBase64Url(tempoReceiptHdr));
+      assert.strictEqual(decodedTempoReceipt.method, 'tempo');
+      assert.strictEqual(decodedTempoReceipt.reference, tempoTxHash);
+
+      const replayTempo = await originalFetch(`${baseUrl}/test-mpp`, {
+        headers: { Authorization: tempoHeader },
+      });
+      assert.strictEqual(replayTempo.status, 402);
+    } finally {
+      globalThis.fetch = originalFetch;
+      delete process.env.TEMPO_RPC_URL;
+    }
   } finally {
     server.close();
   }

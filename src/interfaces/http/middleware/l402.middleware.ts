@@ -15,6 +15,7 @@ import {
   buildMppTempoChallenge,
   parseMppAuthorizationHeader,
   buildMppPaymentReceiptHeader,
+  verifyTempoSettlementOnChain,
 } from './mpp.helper.js';
 
 export const BASE_PAY_TO_ADDRESS =
@@ -599,10 +600,84 @@ export function createL402Middleware(
         return next();
       }
 
+      // Method C: Tempo PathUSD On-Chain Settlement (chainId 4217)
+      if (parsedMpp.method === 'tempo' && parsedMpp.tempoTxHash) {
+        const txHash = parsedMpp.tempoTxHash;
+        const replayKey = `mpp:tempo:${txHash}`;
+
+        if (consumedX402Nonces.has(replayKey)) {
+          const recovery = acquireUnfulfilledPaymentRecovery(replayKey, options.priceSats);
+          if (!recovery.recovered) {
+            attachMppRechallengeHeader(res, { host, usdcAtomic, description });
+            return res.status(402).json({
+              error: 'MPP Tempo Transaction Already Redeemed',
+              details: `Tempo txHash ${txHash} has already been consumed.`,
+              protocol: 'mpp',
+            });
+          }
+        } else if (inFlightX402Nonces.has(replayKey)) {
+          return res.status(402).json({
+            error: 'MPP Tempo Verification In Flight',
+            details: 'A request with this Tempo txHash is currently being verified.',
+            protocol: 'mpp',
+          });
+        }
+
+        inFlightX402Nonces.add(replayKey);
+        try {
+          const shadowMode = process.env.X402_SHADOW_MODE === 'true';
+          if (!shadowMode) {
+            const settlement = await verifyTempoSettlementOnChain({
+              txHash,
+              requiredAtomic: BigInt(usdcAtomic),
+              recipient: BASE_PAY_TO_ADDRESS,
+            });
+            if (!settlement.ok) {
+              if (settlement.transient) {
+                return res.status(503).json({
+                  error: 'Tempo RPC Temporarily Unavailable',
+                  details: settlement.error,
+                });
+              }
+              attachMppRechallengeHeader(res, { host, usdcAtomic, description });
+              return res.status(402).json({
+                error: 'MPP Tempo Settlement Verification Failed',
+                details: settlement.error,
+                protocol: 'mpp',
+              });
+            }
+          }
+
+          addBoundedSetEntry(consumedX402Nonces, replayKey);
+          const receiptHeader = buildMppPaymentReceiptHeader({
+            challengeId: parsedMpp.challengeId || `ch_tempo_${txHash.slice(2, 18)}`,
+            method: 'tempo',
+            reference: txHash,
+          });
+          res.setHeader('Payment-Receipt', receiptHeader);
+          (req as any).paymentRail = 'MPP-TEMPO-PATHUSD';
+          (req as any).mpp = {
+            method: 'tempo',
+            intent: parsedMpp.intent || 'charge',
+            challengeId: parsedMpp.challengeId,
+            txHash,
+          };
+          attachPostPaymentFailureGuard(res, {
+            replayKey,
+            priceSats: options.priceSats,
+            rail: 'MPP-TEMPO-PATHUSD',
+            txHash,
+          });
+          return next();
+        } finally {
+          inFlightX402Nonces.delete(replayKey);
+        }
+      }
+
       attachMppRechallengeHeader(res, { host, usdcAtomic, description });
       return res.status(402).json({
         error: 'MPP Unrecognized Payment Method',
-        details: 'Currently supported MPP methods: lightning, usdc.',
+        details: 'Currently supported MPP methods: lightning, usdc, tempo.',
         protocol: 'mpp',
       });
     }

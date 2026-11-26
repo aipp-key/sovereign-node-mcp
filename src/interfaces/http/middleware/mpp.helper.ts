@@ -68,6 +68,7 @@ export interface ParsedMppCredential {
   challengeId?: string;
   preimage?: string;
   paymentHash?: string;
+  tempoTxHash?: string;
   usdcAuthorization?: {
     from: string;
     to: string;
@@ -297,6 +298,23 @@ export function parseMppAuthorizationHeader(authHeader: string | undefined): Par
     };
   }
 
+  // Case A.5: Tempo PathUSD On-Chain Transaction Settlement
+  const txHashCandidate = payload.txHash || payload.transactionHash || payload.hash || decodedObj.txHash;
+  if (
+    (method === 'tempo' || !method) &&
+    typeof txHashCandidate === 'string' &&
+    /^0x[0-9a-fA-F]{64}$/.test(txHashCandidate.trim())
+  ) {
+    return {
+      isMpp: true,
+      method: 'tempo',
+      intent,
+      challengeId,
+      tempoTxHash: txHashCandidate.trim().toLowerCase(),
+      rawToken: decodedObj,
+    };
+  }
+
   // Case B: EVM / USDC EIP-3009 Authorization
   const isUsdcOrEvm = method === 'usdc' || method === 'evm' || payload.type === 'authorization' || payload.signature;
   if (isUsdcOrEvm) {
@@ -338,7 +356,7 @@ export function parseMppAuthorizationHeader(authHeader: string | undefined): Par
  * Payment-Receipt: <base64url(jcs(receipt))>
  */
 export function buildMppPaymentReceiptHeader(receipt: {
-  method: 'lightning' | 'usdc';
+  method: 'lightning' | 'usdc' | 'tempo';
   challengeId: string;
   reference: string;
   status?: 'success';
@@ -354,4 +372,74 @@ export function buildMppPaymentReceiptHeader(receipt: {
 
   const canonicalJson = canonicalizeJson(receiptObj);
   return toBase64Url(canonicalJson);
+}
+
+const TEMPO_TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+const DEFAULT_TEMPO_RPC = 'https://rpc.tempo.xyz';
+
+export async function verifyTempoSettlementOnChain(params: {
+  txHash: string;
+  requiredAtomic: bigint;
+  recipient: string;
+  rpcUrl?: string;
+}): Promise<{ ok: true; payer: string; amountAtomic: string } | { ok: false; error: string; transient?: boolean }> {
+  const rpcUrl = params.rpcUrl?.trim() || process.env.TEMPO_RPC_URL?.trim() || DEFAULT_TEMPO_RPC;
+  try {
+    const res = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(6000),
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'eth_getTransactionReceipt',
+        params: [params.txHash],
+      }),
+    });
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: `Tempo RPC returned HTTP ${res.status}`,
+        transient: res.status >= 500 || res.status === 429,
+      };
+    }
+    const rpc = (await res.json()) as {
+      result?: {
+        status?: string;
+        from?: string;
+        logs?: Array<{ address?: string; topics?: string[]; data?: string }>;
+      } | null;
+    };
+    const receipt = rpc?.result;
+    if (!receipt) {
+      return { ok: false, error: 'Tempo transaction receipt not found or pending.' };
+    }
+    if (receipt.status !== '0x1') {
+      return { ok: false, error: 'Tempo transaction reverted on-chain.' };
+    }
+    const targetAddr = params.recipient.replace(/^0x/i, '').toLowerCase();
+    for (const log of receipt.logs ?? []) {
+      if (log.address?.toLowerCase() !== TEMPO_PATH_USD_CONTRACT.toLowerCase()) continue;
+      if (log.topics?.[0]?.toLowerCase() !== TEMPO_TRANSFER_TOPIC) continue;
+      const topicTo = log.topics?.[2]?.toLowerCase();
+      if (!topicTo || !topicTo.endsWith(targetAddr)) continue;
+      const rawVal = log.data ? BigInt(log.data) : 0n;
+      if (rawVal >= params.requiredAtomic) {
+        const topicFrom = log.topics?.[1]?.toLowerCase();
+        const payer =
+          topicFrom && topicFrom.length >= 42 ? `0x${topicFrom.slice(-40)}` : String(receipt.from || 'tempo-agent');
+        return { ok: true, payer, amountAtomic: rawVal.toString() };
+      }
+    }
+    return {
+      ok: false,
+      error: `No matching PathUSD Transfer log >= ${params.requiredAtomic.toString()} to ${params.recipient}.`,
+    };
+  } catch (err: any) {
+    return {
+      ok: false,
+      error: `Tempo RPC request failed: ${err?.message || 'timeout'}`,
+      transient: true,
+    };
+  }
 }
