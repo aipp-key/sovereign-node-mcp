@@ -85,13 +85,37 @@ describe('Market Intel Schemas & Ring Metrics', () => {
     assert.equal(res.midPriceUsd, 100010);
   });
 
-  it('returns 503 with Retry-After before payment challenge when feeds are cold', async () => {
+  it('returns 503 with Retry-After after payment when feeds are cold', async () => {
     const service = new MarketIntelService();
-    const fakeL402 = {
-      issueChallenge: async () => {
-        throw new Error('should not issue 402 challenge when feed is cold');
+    const { L402Service } = await import('../src/application/services/l402.service.js');
+    const paidPreimages = new Map<string, string>();
+    const fakeL402 = new L402Service({
+      async createL402Invoice(priceSats: number) {
+        const { preimageHex, paymentHashHex } = L402Service.generatePreimagePair();
+        paidPreimages.set(paymentHashHex, preimageHex);
+        return {
+          macaroon: Buffer.from(
+            JSON.stringify({
+              caveat: `payment_hash=${paymentHashHex}&price_sats=${priceSats}`,
+              paymentHash: paymentHashHex,
+            })
+          ).toString('base64'),
+          invoice: `lnbc${priceSats * 10}n1test`,
+          paymentHash: paymentHashHex,
+          priceSats,
+          expiresAt: Math.floor(Date.now() / 1000) + 600,
+        };
       },
-    } as unknown as L402Service;
+      verifyMacaroon() {
+        return { valid: true };
+      },
+      async verifyPreimage(paymentHash: string, preimage: string) {
+        return { isValid: paidPreimages.get(paymentHash) === preimage, paymentHash, preimage };
+      },
+      async isInvoiceSettled() {
+        return true;
+      },
+    } as any);
 
     const app = express();
     app.use(createMarketIntelRouter(service, fakeL402));
@@ -101,19 +125,29 @@ describe('Market Intel Schemas & Ring Metrics', () => {
     });
     try {
       const addr = server.address() as { port: number };
-      const r1 = await fetch(`http://127.0.0.1:${addr.port}/v1/intel/microstructure?symbol=BTC`);
+      const probe = async (path: string) => {
+        const c = await fetch(`http://127.0.0.1:${addr.port}${path}`);
+        assert.equal(c.status, 402);
+        const body = (await c.json()) as any;
+        const preimage = paidPreimages.get(body.challenge.paymentHash)!;
+        return fetch(`http://127.0.0.1:${addr.port}${path}`, {
+          headers: { Authorization: `L402 ${body.challenge.macaroon}:${preimage}` },
+        });
+      };
+
+      const r1 = await probe('/v1/intel/microstructure?symbol=BTC');
       assert.equal(r1.status, 503);
       assert.equal(r1.headers.get('retry-after'), '3');
 
-      const r2 = await fetch(`http://127.0.0.1:${addr.port}/v1/intel/polymarket-edge`);
+      const r2 = await probe('/v1/intel/polymarket-edge');
       assert.equal(r2.status, 503);
       assert.equal(r2.headers.get('retry-after'), '5');
 
-      const r3 = await fetch(`http://127.0.0.1:${addr.port}/v1/intel/funding-arb?symbol=BTC`);
+      const r3 = await probe('/v1/intel/funding-arb?symbol=BTC');
       assert.equal(r3.status, 503);
       assert.equal(r3.headers.get('retry-after'), '5');
 
-      const r4 = await fetch(`http://127.0.0.1:${addr.port}/v1/intel/options-skew?asset=BTC`);
+      const r4 = await probe('/v1/intel/options-skew?asset=BTC');
       assert.equal(r4.status, 503);
       assert.equal(r4.headers.get('retry-after'), '5');
     } finally {

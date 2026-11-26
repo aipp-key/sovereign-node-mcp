@@ -156,8 +156,8 @@ test('SCENARIO 2: Full Route, Alias, Discovery Spec, Content Negotiation & CORS 
 
     const getRoutes: [string, number][] = [
       ['/v1/truth/fees', 1], ['/v1/truth/mempool', 2], ['/v1/truth/block', 1], ['/v1/truth/topology', 5],
-      [`/v1/truth/rbf-shield/${VALID_TXID}`, 5], ['/v1/truth/next-block-xray', 3], [`/v1/truth/next-block-xray/${VALID_TXID}`, 3],
-      ['/v1/omni/btc/fees', 1], [`/v1/omni/btc/rbf-shield/${VALID_TXID}`, 5], [`/v1/omni/btc/next-block-xray/${VALID_TXID}`, 3],
+      [`/v1/truth/rbf-shield/${VALID_TXID}`, 5], ['/v1/truth/next-block-xray', 5], [`/v1/truth/next-block-xray/${VALID_TXID}`, 5],
+      ['/v1/omni/btc/fees', 1], [`/v1/omni/btc/rbf-shield/${VALID_TXID}`, 5], [`/v1/omni/btc/next-block-xray/${VALID_TXID}`, 5],
     ];
     for (const [path, sats] of getRoutes) {
       assert.equal((await fetch(`${baseUrl}${path}`, { headers: { Authorization: makeSignedL402(sats) } })).status, 200, `Expected 200 on ${path}`);

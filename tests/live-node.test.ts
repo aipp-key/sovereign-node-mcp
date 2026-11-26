@@ -240,15 +240,15 @@ test('E2E HTTP Router: /v1/chain/btc/rbf-shield/:txid & /v1/chain/btc/mempool en
   const baseUrl = `http://127.0.0.1:${port}`;
 
   try {
-    // 1. Invalid TXID MUST return 400 Bad Request BEFORE generating any L402 invoice!
+    // 1. Unpaid call with invalid TXID returns 402 challenge (x402scan discovery compatibility)
     const badTxRes = await fetch(`${baseUrl}/v1/chain/btc/rbf-shield/not-a-valid-hex-txid`);
-    assert.strictEqual(badTxRes.status, 400, 'Invalid txid must return 400 before L402 challenge');
-    assert.strictEqual(gateway.invoiceCount, 0, 'Zero invoices should be generated for invalid txid');
+    assert.strictEqual(badTxRes.status, 402, 'Unpaid invalid txid returns 402 challenge');
+    assert.ok(badTxRes.headers.get('www-authenticate')?.includes('L402 '));
 
     // 2. Unpaid call to /v1/chain/btc/mempool returns Dual-Rail 402 Payment Required (L402 + x402)
     const mempool402 = await fetch(`${baseUrl}/v1/chain/btc/mempool`);
     assert.strictEqual(mempool402.status, 402);
-    assert.ok(mempool402.headers.get('www-authenticate')?.startsWith('L402 '));
+    assert.ok(mempool402.headers.get('www-authenticate')?.includes('L402 '));
     assert.ok(mempool402.headers.get('payment-required'), 'Must include x402 Payment-Required header');
     assert.strictEqual(
       mempool402.headers.get('x-payment-requirements'),
@@ -257,7 +257,7 @@ test('E2E HTTP Router: /v1/chain/btc/rbf-shield/:txid & /v1/chain/btc/mempool en
 
     const mempoolBody: any = await mempool402.json();
     assert.strictEqual(mempoolBody.x402Version, 2);
-    assert.strictEqual(mempoolBody.challenge.priceSats, 2);
+    assert.strictEqual(mempoolBody.challenge.priceSats, 1);
     assert.ok(mempoolBody.accepts.length >= 2, 'Should offer Base x402 and Lightning L402 in accepts');
     assert.ok(mempoolBody.accepts.some((a: any) => a.network === 'eip155:8453'), 'Must include Base USDC x402 accept');
     assert.ok(mempoolBody.accepts.some((a: any) => a.scheme === 'l402'), 'Must include Lightning L402 accept');

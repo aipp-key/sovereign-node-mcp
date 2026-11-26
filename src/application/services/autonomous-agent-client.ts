@@ -32,7 +32,7 @@ export class AutonomousL402Agent {
 
     // 2. Parse 402 Challenge
     const wwwAuth = initialRes.headers.get('www-authenticate');
-    if (!wwwAuth || !wwwAuth.startsWith('L402 ')) {
+    if (!wwwAuth || !wwwAuth.includes('L402 ')) {
       throw new Error('Received 402 but missing or malformed L402 WWW-Authenticate header');
     }
 

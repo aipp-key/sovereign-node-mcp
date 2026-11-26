@@ -177,13 +177,19 @@ describe('Oracle Feeds Units (Stablecoin Peg, EVM Gas Pulse, BTC ZMQ Whale)', ()
     const { baseUrl, close } = await startServer(app);
 
     try {
-      // 1. Query validation runs before 503/402
-      assert.equal((await fetch(`${baseUrl}/v1/intel/stablecoin-peg?symbol=INVALID`)).status, 400);
-      assert.equal((await fetch(`${baseUrl}/v1/chain/evm/gas-pulse?chain=solana`)).status, 400);
-      assert.equal((await fetch(`${baseUrl}/v1/chain/btc/whale-tape?minBtc=0`)).status, 400);
+      // 1. Unpaid probes return 402 (x402scan compatibility)
+      assert.equal((await fetch(`${baseUrl}/v1/intel/stablecoin-peg?symbol=INVALID`)).status, 402);
+      assert.equal((await fetch(`${baseUrl}/v1/chain/evm/gas-pulse?chain=solana`)).status, 402);
+      assert.equal((await fetch(`${baseUrl}/v1/chain/btc/whale-tape?minBtc=0`)).status, 402);
 
-      // 2. Cold feeds fail safe with 503 Retry-After before invoicing
-      const coldStable = await fetch(`${baseUrl}/v1/intel/stablecoin-peg`);
+      // 2. Cold feeds fail safe with 503 Retry-After after payment
+      const coldChallenge = await fetch(`${baseUrl}/v1/intel/stablecoin-peg`);
+      assert.equal(coldChallenge.status, 402);
+      const coldJson = (await coldChallenge.json()) as any;
+      const coldPreimage = paidPreimages.get(coldJson.challenge.paymentHash)!;
+      const coldStable = await fetch(`${baseUrl}/v1/intel/stablecoin-peg`, {
+        headers: { Authorization: `L402 ${coldJson.challenge.macaroon}:${coldPreimage}` },
+      });
       assert.equal(coldStable.status, 503);
       assert.equal(coldStable.headers.get('retry-after'), '3');
 
@@ -208,13 +214,13 @@ describe('Oracle Feeds Units (Stablecoin Peg, EVM Gas Pulse, BTC ZMQ Whale)', ()
         return paid.json();
       };
 
-      const stableBody = await verifyPaidRoute('/v1/intel/stablecoin-peg?symbol=USDC', 2);
+      const stableBody = await verifyPaidRoute('/v1/intel/stablecoin-peg?symbol=USDC', 1);
       assert.equal(stableBody.data.activeAssetsCount, 1);
 
-      const gasBody = await verifyPaidRoute('/v1/chain/evm/gas-pulse?chain=base', 2);
+      const gasBody = await verifyPaidRoute('/v1/chain/evm/gas-pulse?chain=base', 1);
       assert.equal(gasBody.data.activeChainsCount, 1);
 
-      const whaleBody = await verifyPaidRoute('/v1/chain/btc/whale-tape', 3);
+      const whaleBody = await verifyPaidRoute('/v1/chain/btc/whale-tape', 5);
       assert.equal(whaleBody.data.matchedCount, 1);
       assert.equal(whaleBody.data.events[0].totalOutputBtc, 15);
     } finally {
